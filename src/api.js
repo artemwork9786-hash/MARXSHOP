@@ -35,6 +35,17 @@ export function deleteAccount(id) {
   });
 }
 
+export async function uploadVideo(file) {
+  const formData = new FormData();
+  formData.append("video", file);
+  const res = await fetch(`${API_URL}/api/upload-video`, {
+    method: "POST",
+    body: formData,
+  });
+  if (!res.ok) throw new Error(`Upload error: ${res.status}`);
+  return res.json();
+}
+
 // ─── Orders / Payments ──────────────────────────────────────────────────────
 
 export function createOrder({ accountId, currency, method, tgInitData }) {

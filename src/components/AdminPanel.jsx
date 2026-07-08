@@ -1,6 +1,6 @@
 import { useState, useEffect } from "react";
 import { Shield, Plus, List, Pencil, Trash2, ArrowLeft, Check } from "lucide-react";
-import { getAccounts, addAccount, updateAccount, deleteAccount } from "../api";
+import { getAccounts, addAccount, updateAccount, deleteAccount, uploadVideo } from "../api";
 
 const INPUT =
   "w-full rounded-xl bg-[#0A0A0A] border border-white/10 px-4 py-3 text-sm text-white placeholder-neutral-600 outline-none focus:border-white/30 transition-colors";
@@ -10,12 +10,28 @@ const INPUT =
 function AddScreen({ onDone }) {
   const [form, setForm] = useState({
     title: "", price: "", status: "В наличии", description: "",
-    image_url: "", tags: "", tg_video_id: "",
+    image_url: "", tags: "", video_url: "",
   });
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState(null);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const handleVideoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const res = await uploadVideo(file);
+      setForm((f) => ({ ...f, video_url: res.video_url }));
+      setToast("Видео загружено!");
+    } catch {
+      setToast("Ошибка загрузки видео");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSubmit = async () => {
     if (!form.title.trim()) return;
@@ -29,7 +45,7 @@ function AddScreen({ onDone }) {
         description: form.description.trim(),
         image_url: form.image_url.trim() || "/placeholder.svg",
         tags: form.tags.split(",").map((s) => s.trim()).filter(Boolean),
-        tg_video_id: form.tg_video_id.trim(),
+        video_url: form.video_url,
       });
       setToast("Аккаунт добавлен!");
       setTimeout(() => onDone(), 800);
@@ -53,7 +69,10 @@ function AddScreen({ onDone }) {
         <textarea className={INPUT + " resize-none"} rows={3} placeholder="Описание инвентаря" value={form.description} onChange={set("description")} />
         <input className={INPUT} placeholder="Ссылка на фото" value={form.image_url} onChange={set("image_url")} />
         <input className={INPUT} placeholder="Топ-скины (через запятую)" value={form.tags} onChange={set("tags")} />
-        <input className={INPUT} placeholder="Telegram Video URL / File ID" value={form.tg_video_id} onChange={set("tg_video_id")} />
+        <label className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 bg-[#0A0A0A] px-4 py-3 text-sm text-neutral-500 cursor-pointer hover:border-white/40 transition-colors">
+          <input type="file" accept="video/mp4" className="hidden" onChange={handleVideoUpload} disabled={uploading} />
+          {uploading ? "Видео загружается..." : form.video_url ? "Видео загружено ✓" : "Загрузить видео (.mp4)"}
+        </label>
       </div>
       {toast && <div className="mt-3 rounded-xl bg-green-900/30 border border-green-900/40 px-4 py-2.5"><p className="text-xs text-green-400 text-center">{toast}</p></div>}
       <button onClick={handleSubmit} disabled={loading || !form.title.trim()}
@@ -136,12 +155,28 @@ function EditScreen({ account, onBack }) {
     description: account.description,
     image_url: account.image_url,
     tags: account.tags.join(", "),
-    tg_video_id: account.tg_video_id,
+    video_url: account.video_url || "",
   });
   const [loading, setLoading] = useState(false);
+  const [uploading, setUploading] = useState(false);
   const [toast, setToast] = useState(null);
 
   const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const handleVideoUpload = async (e) => {
+    const file = e.target.files[0];
+    if (!file) return;
+    setUploading(true);
+    try {
+      const res = await uploadVideo(file);
+      setForm((f) => ({ ...f, video_url: res.video_url }));
+      setToast("Видео загружено!");
+    } catch {
+      setToast("Ошибка загрузки видео");
+    } finally {
+      setUploading(false);
+    }
+  };
 
   const handleSave = async () => {
     setLoading(true);
@@ -154,7 +189,7 @@ function EditScreen({ account, onBack }) {
         description: form.description.trim(),
         image_url: form.image_url.trim() || "/placeholder.svg",
         tags: form.tags.split(",").map((s) => s.trim()).filter(Boolean),
-        tg_video_id: form.tg_video_id.trim(),
+        video_url: form.video_url,
       });
       setToast("Сохранено!");
       setTimeout(() => onBack(), 800);
@@ -181,7 +216,10 @@ function EditScreen({ account, onBack }) {
         <textarea className={INPUT + " resize-none"} rows={3} placeholder="Описание" value={form.description} onChange={set("description")} />
         <input className={INPUT} placeholder="Ссылка на фото" value={form.image_url} onChange={set("image_url")} />
         <input className={INPUT} placeholder="Теги через запятую" value={form.tags} onChange={set("tags")} />
-        <input className={INPUT} placeholder="Telegram Video URL / File ID" value={form.tg_video_id} onChange={set("tg_video_id")} />
+        <label className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 bg-[#0A0A0A] px-4 py-3 text-sm text-neutral-500 cursor-pointer hover:border-white/40 transition-colors">
+          <input type="file" accept="video/mp4" className="hidden" onChange={handleVideoUpload} disabled={uploading} />
+          {uploading ? "Видео загружается..." : form.video_url ? "Видео загружено ✓" : "Загрузить видео (.mp4)"}
+        </label>
       </div>
       {toast && <div className="mt-3 rounded-xl bg-green-900/30 border border-green-900/40 px-4 py-2.5"><p className="text-xs text-green-400 text-center">{toast}</p></div>}
       <div className="mt-4 flex gap-2">
