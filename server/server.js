@@ -183,35 +183,21 @@ app.post("/api/create-order", async (req, res) => {
     const order = storage.createOrder({ accountId, currency, method });
 
     if (method === "crypto") {
-      // Create invoice via Crypto Pay API (fiat invoice)
-      try {
-        const { payUrl, invoiceId } = await cryptoPay.createInvoice({
-          asset: "USDT",
-          fiat: currency,
-          amount: price,
-          paid_btn_name: "callback",
-          paid_btn_url: FRONTEND_URL,
-          payload: order.id,
-        });
-        storage.updateOrder(order.id, { payUrl, invoiceId, amount: price });
-        console.log(`[ORDER] Crypto invoice created: ${order.id} for ${accountId}`);
+      // Manual invoice flow — user creates invoice in @CryptoBot
+      const instructions = cryptoPay.getPayInstructions(order.id);
+      storage.updateOrder(order.id, { amount: price });
+      console.log(`[ORDER] Crypto order created: ${order.id} for ${accountId} — manual flow`);
 
-        return res.json({
-          success: true,
-          orderId: order.id,
-          accountId,
-          payUrl,
-          amount: price,
-          currency,
-          expiresAt: order.expiresAt,
-        });
-      } catch (err) {
-        console.error(`[CRYPTO_PAY] Error creating invoice:`, err.message);
-        // Release account on failure
-        storage.releaseAccount(accountId, accounts);
-        storage.deleteOrder(order.id);
-        return res.status(502).json({ error: "Failed to create crypto invoice" });
-      }
+      return res.json({
+        success: true,
+        orderId: order.id,
+        accountId,
+        method: "crypto",
+        instructions,
+        amount: price,
+        currency,
+        expiresAt: order.expiresAt,
+      });
     }
 
     // SBP method
@@ -289,6 +275,32 @@ app.post("/api/confirm-sbp", (req, res) => {
   console.log(`[ORDER] SBP confirmation: ${orderId} → AWAITING_VERIFICATION`);
 
   res.json({ success: true, orderId, status: "AWAITING_VERIFICATION" });
+});
+
+// POST /api/verify-invoice — user submits invoice_id from @CryptoBot
+app.post("/api/verify-invoice", (req, res) => {
+  const { orderId, invoiceId } = req.body;
+  if (!orderId) return res.status(400).json({ error: "orderId is required" });
+  if (!invoiceId) return res.status(400).json({ error: "invoiceId is required" });
+
+  const order = storage.getOrder(orderId);
+  if (!order) return res.status(404).json({ error: "Order not found" });
+  if (order.method !== "crypto") return res.status(400).json({ error: "Not a crypto order" });
+  if (order.status !== "PENDING") return res.status(400).json({ error: `Order is ${order.status}` });
+
+  storage.updateOrder(orderId, {
+    invoiceId: invoiceId,
+    status: "AWAITING_VERIFICATION",
+  });
+  console.log(`[ORDER] Crypto invoice submitted: ${orderId}, invoice: ${invoiceId}`);
+
+  res.json({
+    success: true,
+    orderId,
+    invoiceId,
+    status: "AWAITING_VERIFICATION",
+    message: "Invoice ID получен. Ожидает подтверждения.",
+  });
 });
 
 // POST /api/webhook/crypto — Crypto Bot webhook
