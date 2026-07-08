@@ -184,7 +184,7 @@ app.post("/api/create-order", async (req, res) => {
 
     if (method === "crypto") {
       // Manual invoice flow — user creates invoice in @CryptoBot
-      const instructions = cryptoPay.getPayInstructions(order.id);
+      const instructions = cryptoPay.getPayInstructions(order.id, price, currency);
       storage.updateOrder(order.id, { amount: price });
       console.log(`[ORDER] Crypto order created: ${order.id} for ${accountId} — manual flow`);
 
@@ -258,6 +258,14 @@ app.get("/api/check-order", (req, res) => {
     orderId,
     status: order.status,
     paidAt: order.paidAt || null,
+    credentials: order.status === "PAID" ? (() => {
+      const account = accounts.find((a) => a.id === order.accountId);
+      if (!account) return null;
+      return {
+        login: account.title.toLowerCase().replace(/ /g, "").replace(/#/g, "") + "@marx.shop",
+        password: "marx" + account.id.slice(-3) + "2024!",
+      };
+    })() : null,
   });
 });
 
