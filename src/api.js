@@ -9,10 +9,28 @@ async function request(path, options = {}) {
   return res.json();
 }
 
-export function createOrder(account) {
-  return request("/api/rent", {
+export function createOrder({ accountId, currency, method, tgInitData }) {
+  return request("/api/create-order", {
     method: "POST",
-    body: JSON.stringify(account),
+    body: JSON.stringify({ accountId, currency, method, tgInitData }),
+  });
+}
+
+export function checkOrder(orderId) {
+  return request(`/api/check-order?orderId=${orderId}`);
+}
+
+export function confirmSbp(orderId) {
+  return request("/api/confirm-sbp", {
+    method: "POST",
+    body: JSON.stringify({ orderId }),
+  });
+}
+
+export function cancelOrder(accountId) {
+  return request("/api/cancel-order", {
+    method: "POST",
+    body: JSON.stringify({ accountId }),
   });
 }
 
