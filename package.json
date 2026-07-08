@@ -1,0 +1,33 @@
+{
+  "name": "marx-shop",
+  "private": true,
+  "version": "0.0.0",
+  "type": "module",
+  "homepage": "https://artemwork9786-hash.github.io/MARXSHOP",
+  "scripts": {
+    "dev": "vite",
+    "dev:server": "cd server && npm run dev",
+    "dev:all": "concurrently \"npm run dev:server\" \"npm run dev\"",
+    "build": "vite build",
+    "lint": "oxlint",
+    "preview": "vite preview",
+    "predeploy": "npm run build",
+    "deploy": "gh-pages -d dist"
+  },
+  "dependencies": {
+    "lucide-react": "^1.23.0",
+    "react": "^19.2.7",
+    "react-dom": "^19.2.7"
+  },
+  "devDependencies": {
+    "@tailwindcss/vite": "^4.3.2",
+    "@types/react": "^19.2.17",
+    "@types/react-dom": "^19.2.3",
+    "@vitejs/plugin-react": "^6.0.3",
+    "concurrently": "^9.2.1",
+    "gh-pages": "^6.3.0",
+    "oxlint": "^1.71.0",
+    "tailwindcss": "^4.3.2",
+    "vite": "^8.1.1"
+  }
+}
