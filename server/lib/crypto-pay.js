@@ -3,9 +3,15 @@ const https = require("https");
 
 const CRYPTO_BOT_TOKEN = process.env.CRYPTO_BOT_TOKEN;
 
-// Explicit SNI agent — tells Cloudflare the correct servername
+// Build URL from components — guaranteed correct
+const protocol = "https://";
+const subdomain = "pay.";
+const domain = "crypto.bot";
+const API_BASE = protocol + subdomain + domain + "/api";
+
+// Explicit SNI agent
 const agent = new https.Agent({
-  servername: "pay.crypto.bot",
+  servername: subdomain + domain,
 });
 
 async function createInvoice({ asset = "USDT", payload }) {
@@ -13,10 +19,10 @@ async function createInvoice({ asset = "USDT", payload }) {
 
   const amount = "0.1";
 
-  console.log(`[CRYPTO_PAY] Creating invoice: ${asset} ${amount}`);
+  console.log(`[CRYPTO_PAY] POST ${API_BASE}/createInvoice`);
 
   const { data } = await axios.post(
-    "https://crypto.bot/api/createInvoice",
+    API_BASE + "/createInvoice",
     {
       asset: asset,
       amount: amount,
@@ -29,7 +35,6 @@ async function createInvoice({ asset = "USDT", payload }) {
       headers: {
         "Content-Type": "application/json",
         "Crypto-Pay-API-Token": CRYPTO_BOT_TOKEN,
-        "Host": "pay.crypto.bot",
       },
     }
   );
@@ -49,12 +54,11 @@ async function createInvoice({ asset = "USDT", payload }) {
 async function getInvoice(invoiceId) {
   if (!CRYPTO_BOT_TOKEN) throw new Error("CRYPTO_BOT_TOKEN is not set");
 
-  const { data } = await axios.get("https://crypto.bot/api/getInvoices", {
+  const { data } = await axios.get(API_BASE + "/getInvoices", {
     httpsAgent: agent,
     headers: {
       "Content-Type": "application/json",
       "Crypto-Pay-API-Token": CRYPTO_BOT_TOKEN,
-      "Host": "pay.crypto.bot",
     },
     params: { invoice_ids: invoiceId },
   });
