@@ -1,32 +1,54 @@
 const axios = require("axios");
 const https = require("https");
+const dns = require("dns");
 
 const CRYPTO_BOT_TOKEN = process.env.CRYPTO_BOT_TOKEN;
+const HOSTNAME = "pay.crypto.bot";
 
-// Build URL from components — guaranteed correct
-const protocol = "https://";
-const subdomain = "pay.";
-const domain = "crypto.bot";
-const API_BASE = protocol + subdomain + domain + "/api";
+// Cache for resolved IP
+let cachedIp = null;
+let cacheExpiry = 0;
+const CACHE_TTL = 5 * 60 * 1000; // 5 minutes
 
-// Explicit SNI agent — force IPv4 to avoid Railway DNS/IPv6 issues
-const agent = new https.Agent({
-  servername: subdomain + domain,
-  family: 4,
-});
+/**
+ * Resolve hostname to IPv4 via Google DNS (8.8.8.8)
+ * Bypasses Railway's broken system DNS
+ */
+async function resolveHost() {
+  if (cachedIp && Date.now() < cacheExpiry) {
+    return cachedIp;
+  }
 
+  const ips = await dns.promises.resolve4(HOSTNAME, { server: "8.8.8.8" });
+  cachedIp = ips[0];
+  cacheExpiry = Date.now() + CACHE_TTL;
+
+  console.log(`[CRYPTO_PAY] Resolved ${HOSTNAME} → ${cachedIp}`);
+  return cachedIp;
+}
+
+/**
+ * Create a Crypto Pay invoice (mainnet, 0.1 USDT test)
+ */
 async function createInvoice({ asset = "USDT", payload }) {
   if (!CRYPTO_BOT_TOKEN) throw new Error("CRYPTO_BOT_TOKEN is not set");
 
-  const amount = "0.1";
+  const ip = await resolveHost();
 
-  console.log(`[CRYPTO_PAY] POST ${API_BASE}/createInvoice`);
+  // SNI agent — servername for TLS handshake, family 4 for IPv4
+  const agent = new https.Agent({
+    servername: HOSTNAME,
+    family: 4,
+  });
+
+  const url = `https://${ip}/api/createInvoice`;
+  console.log(`[CRYPTO_PAY] POST ${url}`);
 
   const { data } = await axios.post(
-    API_BASE + "/createInvoice",
+    url,
     {
       asset: asset,
-      amount: amount,
+      amount: "0.1",
       paid_btn_name: "callback",
       paid_btn_url: process.env.FRONTEND_URL || "https://artemwork9786-hash.github.io/MARXSHOP",
       payload: String(payload),
@@ -36,6 +58,7 @@ async function createInvoice({ asset = "USDT", payload }) {
       headers: {
         "Content-Type": "application/json",
         "Crypto-Pay-API-Token": CRYPTO_BOT_TOKEN,
+        "Host": HOSTNAME,
       },
     }
   );
@@ -52,14 +75,25 @@ async function createInvoice({ asset = "USDT", payload }) {
   };
 }
 
+/**
+ * Get invoice status
+ */
 async function getInvoice(invoiceId) {
   if (!CRYPTO_BOT_TOKEN) throw new Error("CRYPTO_BOT_TOKEN is not set");
 
-  const { data } = await axios.get(API_BASE + "/getInvoices", {
+  const ip = await resolveHost();
+
+  const agent = new https.Agent({
+    servername: HOSTNAME,
+    family: 4,
+  });
+
+  const { data } = await axios.get(`https://${ip}/api/getInvoices`, {
     httpsAgent: agent,
     headers: {
       "Content-Type": "application/json",
       "Crypto-Pay-API-Token": CRYPTO_BOT_TOKEN,
+      "Host": HOSTNAME,
     },
     params: { invoice_ids: invoiceId },
   });
