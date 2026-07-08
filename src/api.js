@@ -15,6 +15,10 @@ export function getAccounts() {
   return request("/api/accounts");
 }
 
+export function getRates() {
+  return request("/api/rates");
+}
+
 export function addAccount(account) {
   return request("/api/accounts", {
     method: "POST",
