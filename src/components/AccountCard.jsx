@@ -1,29 +1,38 @@
-import { Play, ExternalLink } from "lucide-react";
+import { useState } from "react";
+import { Play } from "lucide-react";
+
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 export default function AccountCard({ account, onRent }) {
+  const [isPlaying, setIsPlaying] = useState(false);
   const isAvailable = account.status === "В наличии";
   const formattedPrice = account.price.toLocaleString("ru-RU");
-
-  const handleVideo = () => {
-    if (account.tg_video_id) {
-      window.open(account.tg_video_id, "_blank");
-    }
-  };
+  const hasVideo = !!account.video_url;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#1A1A1A]">
       {/* Media Zone */}
       <div className="relative h-48 w-full">
-        <img
-          src={account.image_url || "/placeholder.svg"}
-          alt={account.title}
-          className="h-full w-full rounded-t-2xl object-cover"
-        />
+        {isPlaying && hasVideo ? (
+          <video
+            src={API_URL + account.video_url}
+            autoPlay
+            controls
+            playsInline
+            className="h-full w-full rounded-t-2xl object-cover"
+          />
+        ) : (
+          <img
+            src={account.image_url || "/placeholder.svg"}
+            alt={account.title}
+            className="h-full w-full rounded-t-2xl object-cover"
+          />
+        )}
 
         {/* Video Button */}
-        {account.tg_video_id && (
+        {hasVideo && !isPlaying && (
           <button
-            onClick={handleVideo}
+            onClick={() => setIsPlaying(true)}
             className="absolute bottom-3 right-3 z-10 flex items-center gap-1.5 rounded-full bg-black/60 backdrop-blur-sm px-3 py-1.5 text-[10px] font-bold text-white uppercase tracking-wider hover:bg-black/80 transition-colors"
           >
             <Play size={12} fill="white" /> Видеообзор
