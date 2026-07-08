@@ -27,6 +27,13 @@ export function confirmSbp(orderId) {
   });
 }
 
+export function verifyInvoice(orderId, invoiceId) {
+  return request("/api/verify-invoice", {
+    method: "POST",
+    body: JSON.stringify({ orderId, invoiceId }),
+  });
+}
+
 export function cancelOrder(accountId) {
   return request("/api/cancel-order", {
     method: "POST",

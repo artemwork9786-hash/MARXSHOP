@@ -1,3 +1,4 @@
+import { useState } from "react";
 import { User, Clock, AlertTriangle, Store, CheckCircle, Copy, CreditCard, ExternalLink } from "lucide-react";
 import { CURRENCIES } from "../data/accounts";
 import AdminPanel from "./AdminPanel";
@@ -427,6 +428,114 @@ function EmptyProfile() {
   );
 }
 
+// ─── Crypto Manual Payment View ──────────────────────────────────────────────
+
+function CryptoManualView({ activeOrder, cryptoInstructions, paymentTimer, onVerifyInvoice }) {
+  const [invoiceId, setInvoiceId] = useState("");
+  const [submitting, setSubmitting] = useState(false);
+  const isExpired = paymentTimer <= 0;
+
+  const handleSubmit = async () => {
+    if (!invoiceId.trim()) return;
+    setSubmitting(true);
+    try {
+      await onVerifyInvoice(invoiceId.trim());
+    } finally {
+      setSubmitting(false);
+    }
+  };
+
+  if (isExpired) {
+    return (
+      <div className="flex flex-col items-center px-4 pt-10 pb-6">
+        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-900/30">
+          <AlertTriangle size={32} className="text-red-500" />
+        </div>
+        <h2 className="mt-4 text-lg font-bold text-white tracking-wide">
+          Время оплаты истекло!
+        </h2>
+        <p className="mt-2 text-center text-sm text-neutral-500">
+          Бронь автоматически снята. Выберите аккаунт заново в Магазине.
+        </p>
+      </div>
+    );
+  }
+
+  return (
+    <div className="px-4 pt-6 pb-6">
+      <div className="rounded-2xl border border-white/5 bg-[#1A1A1A] p-5">
+        <div className="flex items-center gap-3">
+          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-900/30">
+            <ExternalLink size={20} className="text-blue-400" />
+          </div>
+          <div>
+            <p className="text-[11px] uppercase tracking-wider text-blue-400">
+              Оплата через CryptoBot
+            </p>
+            <h2 className="text-sm font-bold text-white">
+              Аренда: {activeOrder.title}
+            </h2>
+          </div>
+        </div>
+      </div>
+
+      {/* Instructions */}
+      <div className="mt-4 rounded-2xl border border-white/5 bg-[#1A1A1A] p-5">
+        <h3 className="text-sm font-bold text-white mb-3">
+          Как оплатить
+        </h3>
+        <ol className="space-y-2">
+          {cryptoInstructions.steps.map((step, i) => (
+            <li key={i} className="flex items-start gap-2.5 text-[13px] leading-relaxed text-neutral-400">
+              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-800 text-[10px] font-bold text-white">
+                {i + 1}
+              </span>
+              {step}
+            </li>
+          ))}
+        </ol>
+      </div>
+
+      {/* Invoice ID Input */}
+      <div className="mt-4 rounded-2xl border border-white/5 bg-[#1A1A1A] p-5">
+        <h3 className="text-sm font-bold text-white mb-3">
+          Вставьте Invoice ID
+        </h3>
+        <input
+          type="text"
+          placeholder="Invoice ID из чека CryptoBot"
+          value={invoiceId}
+          onChange={(e) => setInvoiceId(e.target.value)}
+          className="w-full rounded-xl bg-[#0A0A0A] border border-white/10 px-4 py-3 text-sm text-white font-mono placeholder-neutral-600 outline-none focus:border-white/30 transition-colors"
+        />
+        <button
+          onClick={handleSubmit}
+          disabled={!invoiceId.trim() || submitting}
+          className="mt-3 w-full rounded-xl bg-white py-3 text-sm font-bold text-black uppercase tracking-wider transition-all active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100"
+        >
+          {submitting ? "Отправка..." : "Подтвердить оплату"}
+        </button>
+      </div>
+
+      {/* Timer */}
+      <div className="mt-4 flex flex-col items-center rounded-2xl border border-white/5 bg-[#1A1A1A] p-5">
+        <p className="text-[11px] uppercase tracking-wider text-neutral-500">
+          Осталось времени
+        </p>
+        <div className="mt-2 text-4xl font-bold tabular-nums text-white tracking-widest">
+          {formatTime(paymentTimer)}
+        </div>
+        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
+          <div
+            className="h-full rounded-full bg-white transition-all duration-1000"
+            style={{ width: `${(paymentTimer / 600) * 100}%` }}
+          />
+        </div>
+      </div>
+    </div>
+  );
+}
+
 // ─── Main ProfileTab ─────────────────────────────────────────────────────────
 
 export default function ProfileTab({
@@ -437,7 +546,9 @@ export default function ProfileTab({
   paymentMethod,
   payUrl,
   paymentDetails,
+  cryptoInstructions,
   onSelectMethod,
+  onVerifyInvoice,
   onClearOrder,
 }) {
   // No active order — show empty profile
@@ -455,19 +566,20 @@ export default function ProfileTab({
     return <PaidView activeOrder={activeOrder} currency={currency} />;
   }
 
-  // Awaiting verification (SBP)
+  // Awaiting verification
   if (orderStatus === "awaiting_verification") {
     return <AwaitingVerificationView activeOrder={activeOrder} currency={currency} />;
   }
 
   // Pending — show appropriate payment view
   if (orderStatus === "pending") {
-    if (paymentMethod === "crypto") {
+    if (paymentMethod === "crypto" && cryptoInstructions) {
       return (
-        <CryptoPaymentView
+        <CryptoManualView
           activeOrder={activeOrder}
+          cryptoInstructions={cryptoInstructions}
           paymentTimer={paymentTimer}
-          currency={currency}
+          onVerifyInvoice={onVerifyInvoice}
         />
       );
     }

@@ -6,7 +6,7 @@ import BottomNav from "./components/BottomNav";
 import InfoTab from "./components/InfoTab";
 import ProfileTab from "./components/ProfileTab";
 import { mockAccounts, CURRENCIES } from "./data/accounts";
-import { createOrder, checkOrder, confirmSbp, cancelOrder } from "./api";
+import { createOrder, checkOrder, confirmSbp, verifyInvoice, cancelOrder } from "./api";
 
 function ShopTab({ currency, setCurrency, onRent }) {
   return (
@@ -36,6 +36,7 @@ function App() {
   const [orderId, setOrderId] = useState(null);
   const [payUrl, setPayUrl] = useState(null);
   const [paymentDetails, setPaymentDetails] = useState(null);
+  const [cryptoInstructions, setCryptoInstructions] = useState(null);
   const mainButtonRef = useRef(null);
   const pollingRef = useRef(null);
 
@@ -189,12 +190,12 @@ function App() {
         setOrderStatus("pending");
 
         if (method === "crypto") {
-          setPayUrl(res.payUrl);
+          setPayUrl(null);
           setPaymentDetails(null);
-          window.Telegram?.WebApp?.openLink(res.payUrl);
-          startPolling(res.orderId);
+          setCryptoInstructions(res.instructions);
         } else {
           setPayUrl(null);
+          setCryptoInstructions(null);
           setPaymentDetails(res.paymentDetails);
         }
       } catch (err) {
@@ -218,11 +219,27 @@ function App() {
     setOrderId(null);
     setPayUrl(null);
     setPaymentDetails(null);
+    setCryptoInstructions(null);
     setPaymentTimer(600);
     stopPolling();
     const tg = window.Telegram?.WebApp;
     tg?.MainButton?.hide();
   }, [activeOrder, stopPolling]);
+
+  // Submit invoice ID from @CryptoBot
+  const handleVerifyInvoice = useCallback(
+    async (invoiceId) => {
+      if (!orderId || !invoiceId) return;
+      try {
+        const res = await verifyInvoice(orderId, invoiceId);
+        setOrderStatus("awaiting_verification");
+        setCryptoInstructions(null);
+      } catch (err) {
+        console.error("Failed to verify invoice:", err);
+      }
+    },
+    [orderId]
+  );
 
   return (
     <div className="flex min-h-dvh flex-col bg-[#0A0A0A]">
@@ -240,7 +257,9 @@ function App() {
             paymentMethod={paymentMethod}
             payUrl={payUrl}
             paymentDetails={paymentDetails}
+            cryptoInstructions={cryptoInstructions}
             onSelectMethod={handleSelectMethod}
+            onVerifyInvoice={handleVerifyInvoice}
             onClearOrder={handleClearOrder}
           />
         )}
