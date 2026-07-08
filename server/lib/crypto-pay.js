@@ -2,17 +2,20 @@ const https = require("https");
 const dns = require("dns");
 
 const CRYPTO_BOT_TOKEN = process.env.CRYPTO_BOT_TOKEN;
-const HOSTNAME = "api.crypt.bot";
+
+// Cloudflare Worker proxy — bypasses Railway SSL/DNS issues
+const WORKER_URL = "https://quiet-snow-054e.artemwork9786.workers.dev";
 
 let cachedIp = null;
 let cacheExpiry = 0;
 
 async function resolveHost() {
   if (cachedIp && Date.now() < cacheExpiry) return cachedIp;
-  const ips = await dns.promises.resolve4(HOSTNAME, { server: "8.8.8.8" });
+  const url = new URL(WORKER_URL);
+  const ips = await dns.promises.resolve4(url.hostname, { server: "8.8.8.8" });
   cachedIp = ips[0];
   cacheExpiry = Date.now() + 5 * 60 * 1000;
-  console.log(`[CRYPTO_PAY] Resolved ${HOSTNAME} → ${cachedIp}`);
+  console.log(`[CRYPTO_PAY] Resolved worker → ${cachedIp}`);
   return cachedIp;
 }
 
@@ -25,12 +28,12 @@ function httpsRequest(url, options, body) {
         try {
           resolve({ status: res.statusCode, data: JSON.parse(data) });
         } catch {
-          reject(new Error(`Non-JSON response (${res.statusCode}): ${data.substring(0, 200)}`));
+          reject(new Error(`Non-JSON (${res.statusCode}): ${data.substring(0, 200)}`));
         }
       });
     });
     req.on("error", reject);
-    req.write(JSON.stringify(body));
+    if (body) req.write(JSON.stringify(body));
     req.end();
   });
 }
@@ -39,24 +42,23 @@ async function createInvoice({ asset = "USDT", payload }) {
   if (!CRYPTO_BOT_TOKEN) throw new Error("CRYPTO_BOT_TOKEN is not set");
 
   const ip = await resolveHost();
+  const path = "/createInvoice";
 
-  console.log(`[CRYPTO_PAY] POST https://${ip}/api/createInvoice`);
+  console.log(`[CRYPTO_PAY] POST ${WORKER_URL}${path}`);
 
   const { status, data } = await httpsRequest(
-    `https://${ip}/api/createInvoice`,
+    `${WORKER_URL}${path}`,
     {
       method: "POST",
       hostname: ip,
       port: 443,
-      path: "/api/createInvoice",
-      servername: HOSTNAME,
+      path: path,
+      servername: new URL(WORKER_URL).hostname,
       family: 4,
       minVersion: "TLSv1.2",
-      rejectUnauthorized: true,
       headers: {
         "Content-Type": "application/json",
         "Crypto-Pay-API-Token": CRYPTO_BOT_TOKEN,
-        "Host": HOSTNAME,
       },
     },
     {
@@ -84,22 +86,21 @@ async function getInvoice(invoiceId) {
   if (!CRYPTO_BOT_TOKEN) throw new Error("CRYPTO_BOT_TOKEN is not set");
 
   const ip = await resolveHost();
+  const path = `/getInvoices?invoice_ids=${invoiceId}`;
 
   const { data } = await httpsRequest(
-    `https://${ip}/api/getInvoices?invoice_ids=${invoiceId}`,
+    `${WORKER_URL}${path}`,
     {
       method: "GET",
       hostname: ip,
       port: 443,
-      path: `/api/getInvoices?invoice_ids=${invoiceId}`,
-      servername: HOSTNAME,
+      path: path,
+      servername: new URL(WORKER_URL).hostname,
       family: 4,
       minVersion: "TLSv1.2",
-      rejectUnauthorized: true,
       headers: {
         "Content-Type": "application/json",
         "Crypto-Pay-API-Token": CRYPTO_BOT_TOKEN,
-        "Host": HOSTNAME,
       },
     },
     null
