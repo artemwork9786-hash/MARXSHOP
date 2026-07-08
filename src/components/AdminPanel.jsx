@@ -1,158 +1,228 @@
-import { useState } from "react";
-import { Shield, Plus } from "lucide-react";
-import { addAccount } from "../api";
+import { useState, useEffect } from "react";
+import { Shield, Plus, List, Pencil, Trash2, ArrowLeft, Check } from "lucide-react";
+import { getAccounts, addAccount, updateAccount, deleteAccount } from "../api";
 
-const INPUT_STYLE =
+const INPUT =
   "w-full rounded-xl bg-[#0A0A0A] border border-white/10 px-4 py-3 text-sm text-white placeholder-neutral-600 outline-none focus:border-white/30 transition-colors";
 
-export default function AdminPanel() {
+// ─── Screen: Add Account ─────────────────────────────────────────────────────
+
+function AddScreen({ onDone }) {
   const [form, setForm] = useState({
-    title: "",
-    rank: "",
-    priceRub: "",
-    priceUah: "",
-    priceUsd: "",
-    videoUrl: "",
-    skins: "",
+    title: "", price: "", status: "В наличии", description: "",
+    image_url: "", tags: "", tg_video_id: "",
   });
   const [loading, setLoading] = useState(false);
   const [toast, setToast] = useState(null);
 
-  const set = (key) => (e) => setForm((f) => ({ ...f, [key]: e.target.value }));
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
 
   const handleSubmit = async () => {
     if (!form.title.trim()) return;
     setLoading(true);
     setToast(null);
-
-    const newAccount = {
-      id: `marx-vip-${Date.now()}`,
-      title: form.title.trim(),
-      rank: form.rank.trim() || null,
-      status: "available",
-      skins: form.skins
-        .split(",")
-        .map((s) => s.trim())
-        .filter(Boolean),
-      prices: {
-        rub: Number(form.priceRub) || 0,
-        uah: Number(form.priceUah) || 0,
-        usd: Number(form.priceUsd) || 0,
-      },
-      video: form.videoUrl.trim() || "/sample-video.mp4",
-    };
-
     try {
-      await addAccount(newAccount);
-
-      setForm({
-        title: "",
-        rank: "",
-        priceRub: "",
-        priceUah: "",
-        priceUsd: "",
-        videoUrl: "",
-        skins: "",
+      await addAccount({
+        title: form.title.trim(),
+        price: Number(form.price) || 0,
+        status: form.status,
+        description: form.description.trim(),
+        image_url: form.image_url.trim() || "/placeholder.svg",
+        tags: form.tags.split(",").map((s) => s.trim()).filter(Boolean),
+        tg_video_id: form.tg_video_id.trim(),
       });
-      setToast("Аккаунт успешно добавлен в каталог!");
+      setToast("Аккаунт добавлен!");
+      setTimeout(() => onDone(), 800);
     } catch {
-      setToast("Ошибка сервера. Попробуйте позже.");
+      setToast("Ошибка сервера");
     } finally {
       setLoading(false);
     }
   };
 
   return (
+    <div>
+      <h3 className="text-sm font-bold text-white tracking-wide uppercase mb-4">Добавить аккаунт</h3>
+      <div className="space-y-3">
+        <input className={INPUT} placeholder="Название (MARX VIP #1)" value={form.title} onChange={set("title")} />
+        <input className={INPUT} type="number" placeholder="Цена аренды (₽)" value={form.price} onChange={set("price")} />
+        <select className={INPUT} value={form.status} onChange={set("status")}>
+          <option value="В наличии">В наличии</option>
+          <option value="Занят">Занят</option>
+        </select>
+        <textarea className={INPUT + " resize-none"} rows={3} placeholder="Описание инвентаря" value={form.description} onChange={set("description")} />
+        <input className={INPUT} placeholder="Ссылка на фото" value={form.image_url} onChange={set("image_url")} />
+        <input className={INPUT} placeholder="Топ-скины (через запятую)" value={form.tags} onChange={set("tags")} />
+        <input className={INPUT} placeholder="Telegram Video URL / File ID" value={form.tg_video_id} onChange={set("tg_video_id")} />
+      </div>
+      {toast && <div className="mt-3 rounded-xl bg-green-900/30 border border-green-900/40 px-4 py-2.5"><p className="text-xs text-green-400 text-center">{toast}</p></div>}
+      <button onClick={handleSubmit} disabled={loading || !form.title.trim()}
+        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 text-sm font-bold text-black uppercase tracking-wider active:scale-[0.98] disabled:opacity-40">
+        <Plus size={16} />{loading ? "Отправка..." : "Добавить аккаунт в каталог"}
+      </button>
+    </div>
+  );
+}
+
+// ─── Screen: Account List ────────────────────────────────────────────────────
+
+function ListScreen({ onEdit, onAdd }) {
+  const [accounts, setAccounts] = useState([]);
+  const [loading, setLoading] = useState(true);
+
+  const load = async () => {
+    setLoading(true);
+    try {
+      const res = await getAccounts();
+      setAccounts(res.accounts);
+    } catch { /* ignore */ }
+    setLoading(false);
+  };
+
+  useEffect(() => { load(); }, []);
+
+  const handleDelete = async (id, title) => {
+    if (!window.confirm(`Удалить "${title}"?`)) return;
+    try {
+      await deleteAccount(id);
+      setAccounts((prev) => prev.filter((a) => a.id !== id));
+    } catch { /* ignore */ }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center justify-between mb-4">
+        <h3 className="text-sm font-bold text-white tracking-wide uppercase">Каталог аккаунтов</h3>
+        <button onClick={onAdd} className="flex items-center gap-1.5 rounded-lg bg-white/10 px-3 py-1.5 text-xs font-bold text-white hover:bg-white/20">
+          <Plus size={14} /> Добавить
+        </button>
+      </div>
+      {loading ? (
+        <p className="text-xs text-neutral-500">Загрузка...</p>
+      ) : accounts.length === 0 ? (
+        <p className="text-xs text-neutral-500">Аккаунтов пока нет</p>
+      ) : (
+        <div className="space-y-2">
+          {accounts.map((a) => (
+            <div key={a.id} className="flex items-center gap-3 rounded-xl bg-[#1A1A1A] border border-white/5 p-3">
+              <img src={a.image_url || "/placeholder.svg"} alt="" className="h-12 w-12 rounded-lg object-cover bg-neutral-800 shrink-0" />
+              <div className="flex-1 min-w-0">
+                <p className="text-sm font-bold text-white truncate">{a.title}</p>
+                <p className="text-[10px] text-neutral-500 truncate">
+                  [{a.status.toUpperCase()}] {a.tags.join(", ")} · {a.price.toLocaleString("ru-RU")} ₽
+                </p>
+              </div>
+              <button onClick={() => onEdit(a)} className="p-2 rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white shrink-0">
+                <Pencil size={16} />
+              </button>
+              <button onClick={() => handleDelete(a.id, a.title)} className="p-2 rounded-lg hover:bg-red-900/30 text-neutral-400 hover:text-red-400 shrink-0">
+                <Trash2 size={16} />
+              </button>
+            </div>
+          ))}
+        </div>
+      )}
+    </div>
+  );
+}
+
+// ─── Screen: Edit Account ────────────────────────────────────────────────────
+
+function EditScreen({ account, onBack }) {
+  const [form, setForm] = useState({
+    title: account.title,
+    price: String(account.price),
+    status: account.status,
+    description: account.description,
+    image_url: account.image_url,
+    tags: account.tags.join(", "),
+    tg_video_id: account.tg_video_id,
+  });
+  const [loading, setLoading] = useState(false);
+  const [toast, setToast] = useState(null);
+
+  const set = (k) => (e) => setForm((f) => ({ ...f, [k]: e.target.value }));
+
+  const handleSave = async () => {
+    setLoading(true);
+    setToast(null);
+    try {
+      await updateAccount(account.id, {
+        title: form.title.trim(),
+        price: Number(form.price) || 0,
+        status: form.status,
+        description: form.description.trim(),
+        image_url: form.image_url.trim() || "/placeholder.svg",
+        tags: form.tags.split(",").map((s) => s.trim()).filter(Boolean),
+        tg_video_id: form.tg_video_id.trim(),
+      });
+      setToast("Сохранено!");
+      setTimeout(() => onBack(), 800);
+    } catch {
+      setToast("Ошибка сервера");
+    } finally {
+      setLoading(false);
+    }
+  };
+
+  return (
+    <div>
+      <div className="flex items-center gap-2 mb-4">
+        <button onClick={onBack} className="p-1.5 rounded-lg hover:bg-white/10 text-neutral-400"><ArrowLeft size={18} /></button>
+        <h3 className="text-sm font-bold text-white tracking-wide uppercase">Редактирование</h3>
+      </div>
+      <div className="space-y-3">
+        <input className={INPUT} placeholder="Название" value={form.title} onChange={set("title")} />
+        <input className={INPUT} type="number" placeholder="Цена (₽)" value={form.price} onChange={set("price")} />
+        <select className={INPUT} value={form.status} onChange={set("status")}>
+          <option value="В наличии">В наличии</option>
+          <option value="Занят">Занят</option>
+        </select>
+        <textarea className={INPUT + " resize-none"} rows={3} placeholder="Описание" value={form.description} onChange={set("description")} />
+        <input className={INPUT} placeholder="Ссылка на фото" value={form.image_url} onChange={set("image_url")} />
+        <input className={INPUT} placeholder="Теги через запятую" value={form.tags} onChange={set("tags")} />
+        <input className={INPUT} placeholder="Telegram Video URL / File ID" value={form.tg_video_id} onChange={set("tg_video_id")} />
+      </div>
+      {toast && <div className="mt-3 rounded-xl bg-green-900/30 border border-green-900/40 px-4 py-2.5"><p className="text-xs text-green-400 text-center">{toast}</p></div>}
+      <div className="mt-4 flex gap-2">
+        <button onClick={onBack} className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-bold text-neutral-400 uppercase tracking-wider hover:bg-white/5">Назад</button>
+        <button onClick={handleSave} disabled={loading}
+          className="flex-1 flex items-center justify-center gap-2 rounded-xl bg-white py-3 text-sm font-bold text-black uppercase tracking-wider active:scale-[0.98] disabled:opacity-40">
+          <Check size={16} />{loading ? "Сохранение..." : "Сохранить"}
+        </button>
+      </div>
+    </div>
+  );
+}
+
+// ─── Main AdminPanel ─────────────────────────────────────────────────────────
+
+export default function AdminPanel() {
+  const [view, setView] = useState("list");
+  const [selectedAccount, setSelectedAccount] = useState(null);
+
+  return (
     <div className="mx-4 mt-6 rounded-2xl border border-white/5 bg-[#1A1A1A] p-4">
-      {/* Header */}
       <div className="flex items-center gap-2.5 mb-4">
         <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10">
           <Shield size={16} className="text-white" />
         </div>
         <div>
-          <h3 className="text-sm font-bold text-white tracking-wide uppercase">
-            Панель управления
-          </h3>
-          <p className="text-[10px] text-neutral-500 tracking-wider uppercase">
-            MARX SHOP — Admin
-          </p>
+          <h3 className="text-sm font-bold text-white tracking-wide uppercase">Панель управления</h3>
+          <p className="text-[10px] text-neutral-500 tracking-wider uppercase">MARX SHOP — Admin</p>
         </div>
       </div>
 
-      {/* Fields */}
-      <div className="space-y-3">
-        <input
-          type="text"
-          placeholder="Название аккаунта (MARX VIP #3)"
-          value={form.title}
-          onChange={set("title")}
-          className={INPUT_STYLE}
+      {view === "list" && (
+        <ListScreen
+          onAdd={() => setView("add")}
+          onEdit={(account) => { setSelectedAccount(account); setView("edit"); }}
         />
-        <input
-          type="text"
-          placeholder="Ранг (Завоеватель)"
-          value={form.rank}
-          onChange={set("rank")}
-          className={INPUT_STYLE}
-        />
-
-        {/* Prices row */}
-        <div className="grid grid-cols-3 gap-2">
-          <input
-            type="number"
-            placeholder="RUB"
-            value={form.priceRub}
-            onChange={set("priceRub")}
-            className={INPUT_STYLE}
-          />
-          <input
-            type="number"
-            placeholder="UAH"
-            value={form.priceUah}
-            onChange={set("priceUah")}
-            className={INPUT_STYLE}
-          />
-          <input
-            type="number"
-            placeholder="USD"
-            value={form.priceUsd}
-            onChange={set("priceUsd")}
-            className={INPUT_STYLE}
-          />
-        </div>
-
-        <input
-          type="url"
-          placeholder="Ссылка на видеообзор (.mp4)"
-          value={form.videoUrl}
-          onChange={set("videoUrl")}
-          className={INPUT_STYLE}
-        />
-        <textarea
-          placeholder="Ключевые скины через запятую"
-          value={form.skins}
-          onChange={set("skins")}
-          rows={2}
-          className={INPUT_STYLE + " resize-none"}
-        />
-      </div>
-
-      {/* Toast */}
-      {toast && (
-        <div className="mt-3 rounded-xl bg-green-900/30 border border-green-900/40 px-4 py-2.5">
-          <p className="text-xs text-green-400 text-center">{toast}</p>
-        </div>
       )}
-
-      {/* Submit */}
-      <button
-        onClick={handleSubmit}
-        disabled={loading || !form.title.trim()}
-        className="mt-4 flex w-full items-center justify-center gap-2 rounded-xl bg-white py-3 text-sm font-bold text-black uppercase tracking-wider transition-all active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100"
-      >
-        <Plus size={16} />
-        {loading ? "Отправка..." : "Опубликовать аккаунт"}
-      </button>
+      {view === "add" && <AddScreen onDone={() => setView("list")} />}
+      {view === "edit" && selectedAccount && (
+        <EditScreen account={selectedAccount} onBack={() => setView("list")} />
+      )}
     </div>
   );
 }

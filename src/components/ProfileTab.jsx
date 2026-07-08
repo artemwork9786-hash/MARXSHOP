@@ -205,10 +205,8 @@ function SbpPaymentView({ activeOrder, paymentDetails, paymentTimer }) {
 
 // ─── Awaiting Verification View ──────────────────────────────────────────────
 
-function AwaitingVerificationView({ activeOrder, currency }) {
-  const curr = CURRENCIES.find((c) => c.code === currency);
-  const price = activeOrder.prices[currency.toLowerCase()];
-  const formattedPrice = price.toLocaleString("ru-RU");
+function AwaitingVerificationView({ activeOrder }) {
+  const formattedPrice = activeOrder.price.toLocaleString("ru-RU");
 
   return (
     <div className="flex flex-col items-center px-4 pt-10 pb-6">
@@ -219,7 +217,7 @@ function AwaitingVerificationView({ activeOrder, currency }) {
         Ожидает подтверждения
       </h2>
       <p className="mt-2 text-center text-sm text-neutral-500">
-        Ваш платёж на сумму {formattedPrice} {curr.symbol} обрабатывается.
+        Ваш платёж на сумму {formattedPrice} ₽ обрабатывается.
         <br />
         После подтверждения данныe для входа появятся здесь.
       </p>
@@ -230,9 +228,7 @@ function AwaitingVerificationView({ activeOrder, currency }) {
 // ─── Paid View ───────────────────────────────────────────────────────────────
 
 function PaidView({ activeOrder, currency, credentials }) {
-  const curr = CURRENCIES.find((c) => c.code === currency);
-  const price = activeOrder.prices[currency.toLowerCase()];
-  const formattedPrice = price.toLocaleString("ru-RU");
+  const formattedPrice = activeOrder.price.toLocaleString("ru-RU");
   const login = credentials?.login || "—";
   const password = credentials?.password || "—";
 
@@ -256,7 +252,7 @@ function PaidView({ activeOrder, currency, credentials }) {
           <div className="flex items-center justify-between">
             <span className="text-sm text-neutral-500">Сумма</span>
             <span className="text-sm font-bold text-white">
-              {formattedPrice} {curr.symbol}
+              {formattedPrice} ₽
             </span>
           </div>
         </div>

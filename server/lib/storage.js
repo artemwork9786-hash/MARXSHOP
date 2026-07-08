@@ -65,8 +65,8 @@ function deleteOrder(orderId) {
 // Account reservation helpers
 function reserveAccount(accountId, accounts) {
   const account = accounts.find((a) => a.id === accountId);
-  if (!account || account.status !== "available") return false;
-  account.status = "rented";
+  if (!account || account.status !== "В наличии") return false;
+  account.status = "Занят";
 
   // Clear existing timer if any
   if (reservationTimers.has(accountId)) {
@@ -74,7 +74,7 @@ function reserveAccount(accountId, accounts) {
   }
 
   const timer = setTimeout(() => {
-    account.status = "available";
+    account.status = "В наличии";
     reservationTimers.delete(accountId);
     // Also expire all pending orders for this account
     for (const order of orders.values()) {
@@ -92,7 +92,7 @@ function reserveAccount(accountId, accounts) {
 function releaseAccount(accountId, accounts) {
   const account = accounts.find((a) => a.id === accountId);
   if (!account) return;
-  account.status = "available";
+  account.status = "В наличии";
   if (reservationTimers.has(accountId)) {
     clearTimeout(reservationTimers.get(accountId));
     reservationTimers.delete(accountId);
