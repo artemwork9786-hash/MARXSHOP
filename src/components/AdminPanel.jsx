@@ -67,7 +67,10 @@ function AddScreen({ onDone }) {
           <option value="Занят">Занят</option>
         </select>
         <textarea className={INPUT + " resize-none"} rows={3} placeholder="Описание инвентаря" value={form.description} onChange={set("description")} />
-        <input className={INPUT} placeholder="Ссылка на фото" value={form.image_url} onChange={set("image_url")} />
+        <div>
+          <input className={INPUT} placeholder="Ссылка на превью-картинку (необязательно)" value={form.image_url} onChange={set("image_url")} />
+          <p className="mt-1 text-[10px] text-neutral-600">Если оставить пустым, будет автоматически взят первый кадр из видео</p>
+        </div>
         <input className={INPUT} placeholder="Топ-скины (через запятую)" value={form.tags} onChange={set("tags")} />
         <label className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 bg-[#0A0A0A] px-4 py-3 text-sm text-neutral-500 cursor-pointer hover:border-white/40 transition-colors">
           <input type="file" accept="video/mp4" className="hidden" onChange={handleVideoUpload} disabled={uploading} />
@@ -214,7 +217,10 @@ function EditScreen({ account, onBack }) {
           <option value="Занят">Занят</option>
         </select>
         <textarea className={INPUT + " resize-none"} rows={3} placeholder="Описание" value={form.description} onChange={set("description")} />
-        <input className={INPUT} placeholder="Ссылка на фото" value={form.image_url} onChange={set("image_url")} />
+        <div>
+          <input className={INPUT} placeholder="Ссылка на превью-картинку (необязательно)" value={form.image_url} onChange={set("image_url")} />
+          <p className="mt-1 text-[10px] text-neutral-600">Если оставить пустым, будет автоматически взят первый кадр из видео</p>
+        </div>
         <input className={INPUT} placeholder="Теги через запятую" value={form.tags} onChange={set("tags")} />
         <label className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 bg-[#0A0A0A] px-4 py-3 text-sm text-neutral-500 cursor-pointer hover:border-white/40 transition-colors">
           <input type="file" accept="video/mp4" className="hidden" onChange={handleVideoUpload} disabled={uploading} />
