@@ -1,4 +1,5 @@
-const CRYPTO_PAY_API = "https://api.crypto.bot";
+// Testnet: https://crypto.bot  |  Mainnet: https://api.crypto.bot
+const CRYPTO_PAY_API = process.env.CRYPTO_PAY_API_URL || "https://crypto.bot";
 const CRYPTO_BOT_TOKEN = process.env.CRYPTO_BOT_TOKEN;
 
 /**
@@ -20,18 +21,39 @@ async function createInvoice({ asset = "USDT", fiat, amount, paid_btn_name = "ca
   };
   if (paid_btn_url) body.paid_btn_url = paid_btn_url;
 
-  const res = await fetch(`${CRYPTO_PAY_API}/api/createInvoice`, {
-    method: "POST",
-    headers: {
-      "Content-Type": "application/json",
-      Authorization: `Bearer ${CRYPTO_BOT_TOKEN}`,
-    },
-    body: JSON.stringify(body),
-  });
+  console.log(`[CRYPTO_PAY] Creating invoice: ${fiat} ${amount} via ${CRYPTO_PAY_API}`);
 
-  const data = await res.json();
+  let res;
+  try {
+    res = await fetch(`${CRYPTO_PAY_API}/api/createInvoice`, {
+      method: "POST",
+      headers: {
+        "Content-Type": "application/json",
+        Authorization: `Bearer ${CRYPTO_BOT_TOKEN}`,
+      },
+      body: JSON.stringify(body),
+    });
+  } catch (err) {
+    console.error(`[CRYPTO_PAY] Network error: ${err.message}`);
+    throw err;
+  }
+
+  let data;
+  try {
+    data = await res.json();
+  } catch (err) {
+    console.error(`[CRYPTO_PAY] Failed to parse response: ${err.message}`);
+    throw err;
+  }
+
+  console.log(`[CRYPTO_PAY] Response status: ${res.status}, ok: ${data.ok}`);
+
   if (!data.ok) {
-    throw new Error(`Crypto Pay API error: ${JSON.stringify(data)}`);
+    const errorMsg = data.error
+      ? `${data.error.code}: ${data.error.message}`
+      : JSON.stringify(data);
+    console.error(`[CRYPTO_PAY] API error: ${errorMsg}`);
+    throw new Error(`Crypto Pay API error: ${errorMsg}`);
   }
 
   return {
@@ -50,11 +72,17 @@ async function getInvoice(invoiceId) {
     throw new Error("CRYPTO_BOT_TOKEN is not set");
   }
 
-  const res = await fetch(`${CRYPTO_PAY_API}/api/getInvoices?invoice_ids=${invoiceId}`, {
-    headers: {
-      Authorization: `Bearer ${CRYPTO_BOT_TOKEN}`,
-    },
-  });
+  let res;
+  try {
+    res = await fetch(`${CRYPTO_PAY_API}/api/getInvoices?invoice_ids=${invoiceId}`, {
+      headers: {
+        Authorization: `Bearer ${CRYPTO_BOT_TOKEN}`,
+      },
+    });
+  } catch (err) {
+    console.error(`[CRYPTO_PAY] Network error (getInvoice): ${err.message}`);
+    throw err;
+  }
 
   const data = await res.json();
   if (!data.ok) {
