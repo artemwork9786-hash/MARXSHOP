@@ -2,7 +2,7 @@ const https = require("https");
 const dns = require("dns");
 
 const CRYPTO_BOT_TOKEN = process.env.CRYPTO_BOT_TOKEN;
-const HOSTNAME = "pay.crypto.bot";
+const HOSTNAME = "api.crypt.bot";
 
 let cachedIp = null;
 let cacheExpiry = 0;
