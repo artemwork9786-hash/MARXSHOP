@@ -398,6 +398,50 @@ app.post("/api/admin/verify-order", (req, res) => {
   res.json({ success: true, orderId, status: "PAID" });
 });
 
+// GET /api/rates — exchange rates from Crypto Bot API (cached 10 min)
+let ratesCache = null;
+let ratesCacheTime = 0;
+
+app.get("/api/rates", async (_req, res) => {
+  const now = Date.now();
+  if (ratesCache && now - ratesCacheTime < 10 * 60 * 1000) {
+    return res.json(ratesCache);
+  }
+
+  try {
+    const url = "https://" + "pay." + "crypto.bot" + "/api/getExchangeRates";
+    const r = await fetch(url, {
+      headers: { "Crypto-Pay-API-Token": process.env.CRYPTO_BOT_TOKEN || "" },
+    });
+    const data = await r.json();
+
+    if (!data.ok) throw new Error("Crypto Pay API error");
+
+    const rates = data.result || [];
+    const findRate = (src, tgt) => {
+      const item = rates.find((e) => e.source === src && e.target === tgt);
+      return item ? item.rate : null;
+    };
+
+    const usdToRub = findRate("USDT", "RUB");
+    const usdToUah = findRate("USDT", "UAH");
+
+    const result = {
+      usd_to_rub: usdToRub || 90,
+      usd_to_uah: usdToUah || 41,
+    };
+
+    ratesCache = result;
+    ratesCacheTime = now;
+    console.log(`[RATES] Updated: USD/RUB=${result.usd_to_rub}, USD/UAH=${result.usd_to_uah}`);
+    res.json(result);
+  } catch (err) {
+    console.error("[RATES] Error:", err.message);
+    const fallback = { usd_to_rub: 90, usd_to_uah: 41 };
+    res.json(fallback);
+  }
+});
+
 // POST /api/cancel-order
 app.post("/api/cancel-order", (req, res) => {
   const { accountId, orderId } = req.body;

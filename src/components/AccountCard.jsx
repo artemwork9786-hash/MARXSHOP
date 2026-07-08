@@ -1,12 +1,22 @@
 import { useState } from "react";
 import { Play } from "lucide-react";
+import { CURRENCIES } from "../data/accounts";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
-export default function AccountCard({ account, onRent }) {
+function convertPrice(priceRub, currency, rates) {
+  if (currency === "RUB") return priceRub;
+  if (currency === "USD") return Math.round(priceRub / rates.usd_to_rub);
+  if (currency === "UAH") return Math.round((priceRub / rates.usd_to_rub) * rates.usd_to_uah);
+  return priceRub;
+}
+
+export default function AccountCard({ account, currency, rates, onRent }) {
   const [isPlaying, setIsPlaying] = useState(false);
   const isAvailable = account.status === "В наличии";
-  const formattedPrice = account.price.toLocaleString("ru-RU");
+  const curr = CURRENCIES.find((c) => c.code === currency);
+  const converted = convertPrice(account.price, currency, rates);
+  const formattedPrice = converted.toLocaleString("ru-RU");
   const hasVideo = !!account.video_url;
   const videoSrc = hasVideo ? API_URL + account.video_url : null;
 
@@ -38,7 +48,6 @@ export default function AccountCard({ account, onRent }) {
           />
         )}
 
-        {/* Video Button */}
         {hasVideo && !isPlaying && (
           <button
             onClick={() => setIsPlaying(true)}
@@ -48,52 +57,33 @@ export default function AccountCard({ account, onRent }) {
           </button>
         )}
 
-        {/* Status Badge */}
         <span
           className={`absolute top-3 left-3 z-10 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
-            isAvailable
-              ? "bg-white text-black"
-              : "bg-neutral-700 text-neutral-400"
+            isAvailable ? "bg-white text-black" : "bg-neutral-700 text-neutral-400"
           }`}
         >
           {account.status}
         </span>
       </div>
 
-      {/* Content */}
       <div className="p-4">
-        <h3 className="text-lg font-bold text-white tracking-wide">
-          {account.title}
-        </h3>
-
+        <h3 className="text-lg font-bold text-white tracking-wide">{account.title}</h3>
         {account.description && (
           <p className="mt-1 text-xs text-neutral-500 line-clamp-2">{account.description}</p>
         )}
-
-        {/* Tags */}
         <div className="mt-2 flex flex-wrap gap-1.5">
           {account.tags.map((tag) => (
-            <span
-              key={tag}
-              className="rounded-lg bg-neutral-800 px-2.5 py-1 text-xs font-medium text-neutral-300"
-            >
-              {tag}
-            </span>
+            <span key={tag} className="rounded-lg bg-neutral-800 px-2.5 py-1 text-xs font-medium text-neutral-300">{tag}</span>
           ))}
         </div>
-
-        {/* Price & Button */}
         <div className="mt-4 flex items-center justify-between">
           <span className="text-xl font-bold text-white">
-            {formattedPrice}
-            <span className="ml-1 text-sm text-neutral-500">₽</span>
+            {formattedPrice}<span className="ml-1 text-sm text-neutral-500">{curr.symbol}</span>
           </span>
           <button
             onClick={isAvailable ? onRent : undefined}
             className={`rounded-xl px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-all active:scale-95 ${
-              isAvailable
-                ? "bg-white text-black hover:bg-neutral-200"
-                : "bg-neutral-800 text-neutral-600 active:scale-100 cursor-not-allowed"
+              isAvailable ? "bg-white text-black hover:bg-neutral-200" : "bg-neutral-800 text-neutral-600 active:scale-100 cursor-not-allowed"
             }`}
             disabled={!isAvailable}
           >

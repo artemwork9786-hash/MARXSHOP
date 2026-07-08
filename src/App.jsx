@@ -6,9 +6,9 @@ import BottomNav from "./components/BottomNav";
 import InfoTab from "./components/InfoTab";
 import ProfileTab from "./components/ProfileTab";
 import { CURRENCIES } from "./data/accounts";
-import { getAccounts, createOrder, checkOrder, confirmSbp, verifyInvoice, cancelOrder } from "./api";
+import { getAccounts, getRates, createOrder, checkOrder, confirmSbp, verifyInvoice, cancelOrder } from "./api";
 
-function ShopTab({ accounts, currency, setCurrency, onRent }) {
+function ShopTab({ accounts, currency, setCurrency, rates, onRent }) {
   return (
     <>
       <CurrencySwitcher currency={currency} setCurrency={setCurrency} />
@@ -18,6 +18,7 @@ function ShopTab({ accounts, currency, setCurrency, onRent }) {
             key={account.id}
             account={account}
             currency={currency}
+            rates={rates}
             onRent={() => onRent(account)}
           />
         ))}
@@ -39,6 +40,7 @@ function App() {
   const [cryptoInstructions, setCryptoInstructions] = useState(null);
   const [credentials, setCredentials] = useState(null);
   const [accounts, setAccounts] = useState([]);
+  const [rates, setRates] = useState({ usd_to_rub: 90, usd_to_uah: 41 });
   const mainButtonRef = useRef(null);
   const pollingRef = useRef(null);
   const activeOrderRef = useRef(null);
@@ -46,10 +48,13 @@ function App() {
   // Keep ref in sync
   activeOrderRef.current = activeOrder;
 
-  // Load accounts from API
+  // Load accounts and rates from API
   useEffect(() => {
     getAccounts()
       .then((res) => setAccounts(res.accounts))
+      .catch(() => {});
+    getRates()
+      .then((res) => setRates(res))
       .catch(() => {});
   }, []);
 
@@ -260,7 +265,7 @@ function App() {
       <Header />
       <main className="flex-1 overflow-y-auto pb-24">
         {activeTab === "shop" && (
-          <ShopTab accounts={accounts} currency={currency} setCurrency={setCurrency} onRent={handleRent} />
+          <ShopTab accounts={accounts} currency={currency} setCurrency={setCurrency} rates={rates} onRent={handleRent} />
         )}
         {activeTab === "profile" && (
           <ProfileTab
