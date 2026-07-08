@@ -1,4 +1,5 @@
 const axios = require("axios");
+const https = require("https");
 
 const CRYPTO_BOT_TOKEN = process.env.CRYPTO_BOT_TOKEN;
 
@@ -8,12 +9,16 @@ const BASE_URL = process.env.CRYPTO_PAY_API_URL || "https://testnet-pay.crypto.b
 const isTestnet = BASE_URL.includes("testnet");
 const SUPPORTED_FIAT = isTestnet ? ["USD"] : ["RUB", "UAH", "USD", "EUR", "GBP", "KZT"];
 
+// Disable SSL verification for testnet (SNI issue with testnet-pay.crypto.bot)
+const agent = new https.Agent({ rejectUnauthorized: false });
+
 const api = axios.create({
   baseURL: `${BASE_URL}/api/`,
   headers: {
     "Content-Type": "application/json",
     "Crypto-Pay-API-Token": CRYPTO_BOT_TOKEN,
   },
+  httpsAgent: agent,
   timeout: 15000,
 });
 
