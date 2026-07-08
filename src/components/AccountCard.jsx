@@ -8,16 +8,25 @@ export default function AccountCard({ account, onRent }) {
   const isAvailable = account.status === "В наличии";
   const formattedPrice = account.price.toLocaleString("ru-RU");
   const hasVideo = !!account.video_url;
+  const videoSrc = hasVideo ? API_URL + account.video_url : null;
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#1A1A1A]">
       {/* Media Zone */}
       <div className="relative h-48 w-full">
-        {isPlaying && hasVideo ? (
+        {isPlaying && videoSrc ? (
           <video
-            src={API_URL + account.video_url}
+            src={videoSrc}
             autoPlay
             controls
+            playsInline
+            className="h-full w-full rounded-t-2xl object-cover"
+          />
+        ) : videoSrc ? (
+          <video
+            src={videoSrc + "#t=0.001"}
+            poster={account.image_url || undefined}
+            preload="metadata"
             playsInline
             className="h-full w-full rounded-t-2xl object-cover"
           />
