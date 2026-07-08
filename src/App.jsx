@@ -31,16 +31,20 @@ function App() {
   const [activeTab, setActiveTab] = useState("shop");
   const [activeOrder, setActiveOrder] = useState(null);
   const [paymentTimer, setPaymentTimer] = useState(600);
-  const [orderStatus, setOrderStatus] = useState(null); // null | "pending" | "paid" | "awaiting_verification"
-  const [paymentMethod, setPaymentMethod] = useState(null); // "crypto" | "sbp"
+  const [orderStatus, setOrderStatus] = useState(null);
+  const [paymentMethod, setPaymentMethod] = useState(null);
   const [orderId, setOrderId] = useState(null);
   const [payUrl, setPayUrl] = useState(null);
   const [paymentDetails, setPaymentDetails] = useState(null);
   const [cryptoInstructions, setCryptoInstructions] = useState(null);
   const [credentials, setCredentials] = useState(null);
+  const [accounts, setAccounts] = useState([]);
   const mainButtonRef = useRef(null);
   const pollingRef = useRef(null);
-  const [accounts, setAccounts] = useState([]);
+  const activeOrderRef = useRef(null);
+
+  // Keep ref in sync
+  activeOrderRef.current = activeOrder;
 
   // Load accounts from API
   useEffect(() => {
@@ -55,12 +59,11 @@ function App() {
     if (tg) {
       tg.expand();
       tg.ready();
-      document.body.style.backgroundColor =
-        tg.themeParams?.bg_color || "#0A0A0A";
+      document.body.style.backgroundColor = tg.themeParams?.bg_color || "#0A0A0A";
     }
   }, []);
 
-  // Polling for order status
+  // Polling helpers
   const stopPolling = useCallback(() => {
     if (pollingRef.current) {
       clearInterval(pollingRef.current);
@@ -79,28 +82,56 @@ function App() {
             setCredentials(res.credentials || null);
             stopPolling();
           } else if (res.status === "EXPIRED") {
-            setActiveOrder(null);
-            setOrderStatus(null);
-            setPaymentMethod(null);
-            setOrderId(null);
-            setPayUrl(null);
-            setPaymentDetails(null);
-            stopPolling();
+            resetAll();
           }
         } catch {
-          // retry next tick
+          /* retry */
         }
       }, 3000);
     },
     [stopPolling]
   );
 
+  // Reset all order state
+  const resetAll = useCallback(() => {
+    setActiveOrder(null);
+    setOrderStatus(null);
+    setPaymentMethod(null);
+    setOrderId(null);
+    setPayUrl(null);
+    setPaymentDetails(null);
+    setCryptoInstructions(null);
+    setCredentials(null);
+    setPaymentTimer(600);
+    if (pollingRef.current) {
+      clearInterval(pollingRef.current);
+      pollingRef.current = null;
+    }
+    const tg = window.Telegram?.WebApp;
+    tg?.MainButton?.hide();
+  }, []);
+
+  // Cancel order on backend
+  const handleClearOrder = useCallback(async () => {
+    const order = activeOrderRef.current;
+    if (order) {
+      try {
+        await cancelOrder(order.id);
+      } catch {
+        /* ignore */
+      }
+    }
+    resetAll();
+  }, [resetAll]);
+
   // Cleanup polling on unmount
   useEffect(() => {
-    return () => stopPolling();
-  }, [stopPolling]);
+    return () => {
+      if (pollingRef.current) clearInterval(pollingRef.current);
+    };
+  }, []);
 
-  // MainButton click handler — for SBP "I paid" confirmation
+  // MainButton click handler — SBP "I paid"
   const handleMainButtonClick = useCallback(async () => {
     if (orderStatus === "pending" && paymentMethod === "sbp" && orderId) {
       try {
@@ -112,7 +143,7 @@ function App() {
           tg.MainButton.offClick(handleMainButtonClick);
         }
       } catch {
-        // retry
+        /* ignore */
       }
     }
   }, [orderStatus, paymentMethod, orderId]);
@@ -146,7 +177,7 @@ function App() {
     };
   }, [activeOrder, orderStatus, paymentMethod, handleMainButtonClick]);
 
-  // Payment countdown (only while pending)
+  // Payment countdown
   useEffect(() => {
     if (!activeOrder || orderStatus !== "pending" || paymentTimer <= 0) return;
     const id = setInterval(() => {
@@ -161,28 +192,27 @@ function App() {
     return () => clearInterval(id);
   }, [activeOrder, orderStatus, paymentTimer, handleClearOrder]);
 
-  // Step 1: Select account, show method selector
-  const handleRent = useCallback(
-    (account) => {
-      setActiveOrder(account);
-      setPaymentMethod(null);
-      setOrderId(null);
-      setPayUrl(null);
-      setPaymentDetails(null);
-      setOrderStatus(null);
-      setActiveTab("profile");
-    },
-    []
-  );
+  // Step 1: Select account
+  const handleRent = useCallback((account) => {
+    setActiveOrder(account);
+    setPaymentMethod(null);
+    setOrderId(null);
+    setPayUrl(null);
+    setPaymentDetails(null);
+    setCryptoInstructions(null);
+    setOrderStatus(null);
+    setActiveTab("profile");
+  }, []);
 
-  // Step 2: Method chosen — create order on backend
+  // Step 2: Method chosen
   const handleSelectMethod = useCallback(
     async (method) => {
-      if (!activeOrder) return;
+      const order = activeOrderRef.current;
+      if (!order) return;
       const tgInitData = window.Telegram?.WebApp?.initData || "";
       try {
         const res = await createOrder({
-          accountId: activeOrder.id,
+          accountId: order.id,
           currency,
           method,
           tgInitData,
@@ -207,37 +237,15 @@ function App() {
         console.error("Failed to create order:", err);
       }
     },
-    [activeOrder, currency, startPolling]
+    [currency, startPolling]
   );
 
-  const handleClearOrder = useCallback(async () => {
-    if (activeOrder) {
-      try {
-        await cancelOrder(activeOrder.id);
-      } catch {
-        // ignore
-      }
-    }
-    setActiveOrder(null);
-    setOrderStatus(null);
-    setPaymentMethod(null);
-    setOrderId(null);
-    setPayUrl(null);
-    setPaymentDetails(null);
-    setCryptoInstructions(null);
-    setCredentials(null);
-    setPaymentTimer(600);
-    stopPolling();
-    const tg = window.Telegram?.WebApp;
-    tg?.MainButton?.hide();
-  }, [activeOrder, stopPolling]);
-
-  // Submit invoice ID from @CryptoBot
+  // Submit invoice ID
   const handleVerifyInvoice = useCallback(
     async (invoiceId) => {
       if (!orderId || !invoiceId) return;
       try {
-        const res = await verifyInvoice(orderId, invoiceId);
+        await verifyInvoice(orderId, invoiceId);
         setOrderStatus("awaiting_verification");
         setCryptoInstructions(null);
       } catch (err) {
