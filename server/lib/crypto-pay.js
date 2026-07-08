@@ -35,10 +35,11 @@ async function createInvoice({ asset = "USDT", payload }) {
 
   const ip = await resolveHost();
 
-  // SNI agent — servername for TLS handshake, family 4 for IPv4
+  // SNI agent — force TLS 1.2+, IPv4, correct servername
   const agent = new https.Agent({
     servername: HOSTNAME,
     family: 4,
+    minVersion: "TLSv1.2",
   });
 
   const url = `https://${ip}/api/createInvoice`;
