@@ -1,17 +1,17 @@
 const axios = require("axios");
 
 const CRYPTO_BOT_TOKEN = process.env.CRYPTO_BOT_TOKEN;
-const BASE_URL = process.env.CRYPTO_PAY_API_URL || "https://testnet-pay.crypto.bot";
+// Mainnet
+const BASE_URL = "https://pay.crypto.bot";
 
-async function createInvoice({ asset = "USDT", fiat, amount, paid_btn_name = "callback", paid_btn_url, payload }) {
+async function createInvoice({ asset = "USDT", payload }) {
   if (!CRYPTO_BOT_TOKEN) throw new Error("CRYPTO_BOT_TOKEN is not set");
 
-  const isTestnet = BASE_URL.includes("testnet");
-  const invoiceFiat = isTestnet ? "USD" : fiat;
-  const invoiceAmount = isTestnet && fiat !== "USD" ? 500 : amount;
+  // Fixed test amount: 0.1 USDT
+  const amount = "0.1";
 
   console.log(`[CRYPTO_PAY] POST ${BASE_URL}/api/createInvoice`);
-  console.log(`[CRYPTO_PAY] body: { asset: "${asset}", fiat: "${invoiceFiat}", amount: "${invoiceAmount}" }`);
+  console.log(`[CRYPTO_PAY] body: { asset: "${asset}", amount: "${amount}" }`);
 
   const { data } = await axios({
     method: "POST",
@@ -22,10 +22,9 @@ async function createInvoice({ asset = "USDT", fiat, amount, paid_btn_name = "ca
     },
     data: {
       asset: asset,
-      fiat: invoiceFiat,
-      amount: String(invoiceAmount),
-      paid_btn_name: paid_btn_name,
-      paid_btn_url: paid_btn_url || "",
+      amount: amount,
+      paid_btn_name: "callback",
+      paid_btn_url: process.env.FRONTEND_URL || "https://artemwork9786-hash.github.io/MARXSHOP",
       payload: String(payload),
     },
   });
