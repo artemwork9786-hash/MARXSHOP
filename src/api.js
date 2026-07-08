@@ -9,6 +9,34 @@ async function request(path, options = {}) {
   return res.json();
 }
 
+// ─── Accounts CRUD ───────────────────────────────────────────────────────────
+
+export function getAccounts() {
+  return request("/api/accounts");
+}
+
+export function addAccount(account) {
+  return request("/api/accounts", {
+    method: "POST",
+    body: JSON.stringify(account),
+  });
+}
+
+export function updateAccount(id, data) {
+  return request(`/api/accounts/${id}`, {
+    method: "PUT",
+    body: JSON.stringify(data),
+  });
+}
+
+export function deleteAccount(id) {
+  return request(`/api/accounts/${id}`, {
+    method: "DELETE",
+  });
+}
+
+// ─── Orders / Payments ──────────────────────────────────────────────────────
+
 export function createOrder({ accountId, currency, method, tgInitData }) {
   return request("/api/create-order", {
     method: "POST",
@@ -38,12 +66,5 @@ export function cancelOrder(accountId) {
   return request("/api/cancel-order", {
     method: "POST",
     body: JSON.stringify({ accountId }),
-  });
-}
-
-export function addAccount(account) {
-  return request("/api/accounts", {
-    method: "POST",
-    body: JSON.stringify(account),
   });
 }

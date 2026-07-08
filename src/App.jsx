@@ -5,15 +5,15 @@ import AccountCard from "./components/AccountCard";
 import BottomNav from "./components/BottomNav";
 import InfoTab from "./components/InfoTab";
 import ProfileTab from "./components/ProfileTab";
-import { mockAccounts, CURRENCIES } from "./data/accounts";
-import { createOrder, checkOrder, confirmSbp, verifyInvoice, cancelOrder } from "./api";
+import { CURRENCIES } from "./data/accounts";
+import { getAccounts, createOrder, checkOrder, confirmSbp, verifyInvoice, cancelOrder } from "./api";
 
-function ShopTab({ currency, setCurrency, onRent }) {
+function ShopTab({ accounts, currency, setCurrency, onRent }) {
   return (
     <>
       <CurrencySwitcher currency={currency} setCurrency={setCurrency} />
       <div className="grid grid-cols-1 gap-6 px-4 md:grid-cols-2 lg:grid-cols-3">
-        {mockAccounts.map((account) => (
+        {accounts.map((account) => (
           <AccountCard
             key={account.id}
             account={account}
@@ -40,6 +40,14 @@ function App() {
   const [credentials, setCredentials] = useState(null);
   const mainButtonRef = useRef(null);
   const pollingRef = useRef(null);
+  const [accounts, setAccounts] = useState([]);
+
+  // Load accounts from API
+  useEffect(() => {
+    getAccounts()
+      .then((res) => setAccounts(res.accounts))
+      .catch(() => {});
+  }, []);
 
   // Telegram init
   useEffect(() => {
@@ -244,7 +252,7 @@ function App() {
       <Header />
       <main className="flex-1 overflow-y-auto pb-24">
         {activeTab === "shop" && (
-          <ShopTab currency={currency} setCurrency={setCurrency} onRent={handleRent} />
+          <ShopTab accounts={accounts} currency={currency} setCurrency={setCurrency} onRent={handleRent} />
         )}
         {activeTab === "profile" && (
           <ProfileTab

@@ -40,89 +40,62 @@ app.use(
 );
 app.use(express.json());
 
-// ─── Mock Accounts Data ───────────────────────────────────────────────────────
+// ─── Accounts Data (new model) ────────────────────────────────────────────────
 
-const accounts = [
+let accounts = [
   {
-    id: "marx-vip-001",
-    title: "MARX VIP #1",
-    status: "available",
-    skins: ["M416 Дракон", "Костюм Мумия", "AWM Космос"],
-    prices: { rub: 23000, uah: 12400, usd: 280 },
-    video: "/sample-video.mp4",
+    id: "marx-vip-001", title: "MARX VIP #1", price: 23000,
+    status: "В наличии", description: "Полный гардероб скинов, завоеватель, все оружие в легендарных скинах",
+    tags: ["M416 Дракон", "Костюм Мумия", "AWM Космос"],
+    tg_video_id: "", image_url: "/placeholder.svg",
   },
   {
-    id: "marx-vip-002",
-    title: "MARX VIP #2",
-    status: "rented",
-    skins: ["AKM Викинг", "УАЗ Тёмный Рыцарь", "Шлем Апокалипсиса"],
-    prices: { rub: 18500, uah: 10000, usd: 225 },
-    video: "/sample-video.mp4",
+    id: "marx-vip-002", title: "MARX VIP #2", price: 18500,
+    status: "Занят", description: "Аккаунт с редкими скинами транспорта и оружия",
+    tags: ["AKM Викинг", "УАЗ Тёмный Рыцарь", "Шлем Апокалипсиса"],
+    tg_video_id: "", image_url: "/placeholder.svg",
   },
   {
-    id: "marx-vip-003",
-    title: "MARX VIP #3",
-    status: "available",
-    skins: ["Kar98k Снеговик", "Костюм Фантом", "M24 Золотой"],
-    prices: { rub: 31000, uah: 16700, usd: 375 },
-    video: "/sample-video.mp4",
+    id: "marx-vip-003", title: "MARX VIP #3", price: 31000,
+    status: "В наличии", description: "Снайперский аккаунт с лучшими винтовками",
+    tags: ["Kar98k Снеговик", "Костюм Фантом", "M24 Золотой"],
+    tg_video_id: "", image_url: "/placeholder.svg",
   },
   {
-    id: "marx-vip-004",
-    title: "MARX VIP #4",
-    status: "available",
-    skins: ["M416 Ледяной", "UMP45 Страж", "Джип Ниндзя"],
-    prices: { rub: 15000, uah: 8100, usd: 182 },
-    video: "/sample-video.mp4",
+    id: "marx-vip-004", title: "MARX VIP #4", price: 15000,
+    status: "В наличии", description: "Аккаунт для любителей автоматов и пистолетов",
+    tags: ["M416 Ледяной", "UMP45 Страж", "Джип Ниндзя"],
+    tg_video_id: "", image_url: "/placeholder.svg",
   },
   {
-    id: "marx-vip-005",
-    title: "MARX VIP #5",
-    status: "rented",
-    skins: ["SCAR-L Пламя", "Костюм Дракон", "Дробовик Берсерк"],
-    prices: { rub: 42000, uah: 22600, usd: 510 },
-    video: "/sample-video.mp4",
+    id: "marx-vip-005", title: "MARX VIP #5", price: 42000,
+    status: "Занят", description: "Премиум аккаунт с эксклюзивными костюмами",
+    tags: ["SCAR-L Пламя", "Костюм Дракон", "Дробовик Берсерк"],
+    tg_video_id: "", image_url: "/placeholder.svg",
   },
   {
-    id: "marx-vip-006",
-    title: "MARX VIP #6",
-    status: "available",
-    skins: ["DP-28 Стальной", "Мотоцикл Ретро", "Очки Будущего"],
-    prices: { rub: 12000, uah: 6500, usd: 146 },
-    video: "/sample-video.mp4",
+    id: "marx-vip-006", title: "MARX VIP #6", price: 12000,
+    status: "В наличии", description: "Бюджетный аккаунт с хорошим набором скинов",
+    tags: ["DP-28 Стальной", "Мотоцикл Ретро", "Очки Будущего"],
+    tg_video_id: "", image_url: "/placeholder.svg",
   },
   {
-    id: "marx-vip-007",
-    title: "MARX VIP #7",
-    status: "available",
-    skins: ["AWM Фантом", "Костюм Тень", "Мотоцикл Гроза"],
-    prices: { rub: 55000, uah: 29600, usd: 670 },
-    video: "/sample-video.mp4",
+    id: "marx-vip-007", title: "MARX VIP #7", price: 55000,
+    status: "В наличии", description: "Топовый аккаунт с X-Suit и полным гардеробом",
+    tags: ["AWM Фантом", "Костюм Тень", "Мотоцикл Гроза"],
+    tg_video_id: "", image_url: "/placeholder.svg",
   },
   {
-    id: "marx-vip-008",
-    title: "MARX VIP #8",
-    status: "available",
-    skins: ["M16A4 Охотник", "UMP45 Механик", "Суперкары"],
-    prices: { rub: 19500, uah: 10500, usd: 238 },
-    video: "/sample-video.mp4",
+    id: "marx-vip-008", title: "MARX VIP #8", price: 19500,
+    status: "В наличии", description: "Сбалансированный аккаунт для рейтинговых игр",
+    tags: ["M16A4 Охотник", "UMP45 Механик", "Суперкары"],
+    tg_video_id: "", image_url: "/placeholder.svg",
   },
   {
-    id: "marx-vip-009",
-    title: "MARX LEGEND #1",
-    status: "available",
-    rank: "Завоеватель",
-    skins: [
-      "Золотой костюм",
-      "Фулл гардероб",
-      "X-Suit",
-      "AWM Легенда",
-      "M416 Ледяной Кристалл",
-      "Костюм Тёмного Рыцаря",
-      "Гарантия от восстановления",
-    ],
-    prices: { rub: 250000, uah: 130000, usd: 3000 },
-    video: "/sample-video.mp4",
+    id: "marx-vip-009", title: "MARX LEGEND #1", price: 250000,
+    status: "В наличии", description: "Легендарный аккаунт. Завоеватель. Фулл гардероб. X-Suit. Гарантия от восстановления.",
+    tags: ["Золотой костюм", "Фулл гардероб", "X-Suit", "AWM Легенда", "M416 Ледяной Кристалл", "Костюм Тёмного Рыцаря"],
+    tg_video_id: "", image_url: "/placeholder.svg",
   },
 ];
 
@@ -142,21 +115,54 @@ app.get("/api/accounts", (_req, res) => {
 
 // POST /api/accounts — add a new account (admin)
 app.post("/api/accounts", (req, res) => {
-  const { id, title, status, skins, prices, video, rank } = req.body;
+  const { title, price, status, description, tags, tg_video_id, image_url } = req.body;
   if (!title) return res.status(400).json({ error: "title is required" });
 
   const newAccount = {
-    id: id || `marx-vip-${Date.now()}`,
+    id: `marx-vip-${Date.now()}`,
     title,
-    status: status || "available",
-    rank: rank || null,
-    skins: Array.isArray(skins) ? skins : [],
-    prices: prices || { rub: 0, uah: 0, usd: 0 },
-    video: video || "/sample-video.mp4",
+    price: Number(price) || 0,
+    status: status || "В наличии",
+    description: description || "",
+    tags: Array.isArray(tags) ? tags : [],
+    tg_video_id: tg_video_id || "",
+    image_url: image_url || "/placeholder.svg",
   };
   accounts.push(newAccount);
   console.log(`[ADMIN] Account added: ${newAccount.title}`);
   res.status(201).json({ success: true, account: newAccount });
+});
+
+// PUT /api/accounts/:id — update account (admin)
+app.put("/api/accounts/:id", (req, res) => {
+  const { id } = req.params;
+  const idx = accounts.findIndex((a) => a.id === id);
+  if (idx === -1) return res.status(404).json({ error: "Account not found" });
+
+  const { title, price, status, description, tags, tg_video_id, image_url } = req.body;
+  accounts[idx] = {
+    ...accounts[idx],
+    title: title !== undefined ? title : accounts[idx].title,
+    price: price !== undefined ? Number(price) : accounts[idx].price,
+    status: status !== undefined ? status : accounts[idx].status,
+    description: description !== undefined ? description : accounts[idx].description,
+    tags: tags !== undefined ? (Array.isArray(tags) ? tags : []) : accounts[idx].tags,
+    tg_video_id: tg_video_id !== undefined ? tg_video_id : accounts[idx].tg_video_id,
+    image_url: image_url !== undefined ? image_url : accounts[idx].image_url,
+  };
+  console.log(`[ADMIN] Account updated: ${id}`);
+  res.json({ success: true, account: accounts[idx] });
+});
+
+// DELETE /api/accounts/:id — delete account (admin)
+app.delete("/api/accounts/:id", (req, res) => {
+  const { id } = req.params;
+  const idx = accounts.findIndex((a) => a.id === id);
+  if (idx === -1) return res.status(404).json({ error: "Account not found" });
+
+  accounts.splice(idx, 1);
+  console.log(`[ADMIN] Account deleted: ${id}`);
+  res.json({ success: true, id });
 });
 
 // POST /api/create-order — create a rental order (crypto or SBP)
@@ -174,12 +180,12 @@ app.post("/api/create-order", async (req, res) => {
 
     const account = accounts.find((a) => a.id === accountId);
     if (!account) return res.status(404).json({ error: "Account not found" });
-    if (account.status !== "available") return res.status(409).json({ error: "Account is not available" });
+    if (account.status !== "В наличии") return res.status(409).json({ error: "Account is not available" });
 
     // Reserve account
     storage.reserveAccount(accountId, accounts);
 
-    const price = account.prices[currency.toLowerCase()];
+    const price = account.price;
     const order = storage.createOrder({ accountId, currency, method });
 
     if (method === "crypto") {
@@ -379,7 +385,7 @@ app.post("/api/cancel-order", (req, res) => {
   }
 
   console.log(`[ORDER] Cancelled for ${accountId}`);
-  res.json({ success: true, accountId, status: "available" });
+  res.json({ success: true, accountId, status: "В наличии" });
 });
 
 // ─── Start ────────────────────────────────────────────────────────────────────
