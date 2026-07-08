@@ -18,7 +18,7 @@ function getTgUser() {
 }
 
 function checkIsAdmin(user) {
-  if (!user) return true;
+  if (!user) return false;
   return user.username === "verykindandfriendlyguy";
 }
 
@@ -65,77 +65,6 @@ function PaymentMethodSelector({ onSelect }) {
 }
 
 // ─── Crypto Payment View (redirected to CryptoBot) ───────────────────────────
-
-function CryptoPaymentView({ activeOrder, paymentTimer, currency }) {
-  const curr = CURRENCIES.find((c) => c.code === currency);
-  const price = activeOrder.prices[currency.toLowerCase()];
-  const formattedPrice = price.toLocaleString("ru-RU");
-  const isExpired = paymentTimer <= 0;
-
-  if (isExpired) {
-    return (
-      <div className="flex flex-col items-center px-4 pt-10 pb-6">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-900/30">
-          <AlertTriangle size={32} className="text-red-500" />
-        </div>
-        <h2 className="mt-4 text-lg font-bold text-white tracking-wide">
-          Время оплаты истекло!
-        </h2>
-        <p className="mt-2 text-center text-sm text-neutral-500">
-          Бронь автоматически снята. Выберите аккаунт заново в Магазине.
-        </p>
-      </div>
-    );
-  }
-
-  return (
-    <div className="px-4 pt-6 pb-6">
-      <div className="rounded-2xl border border-white/5 bg-[#1A1A1A] p-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-900/30">
-            <ExternalLink size={20} className="text-blue-400" />
-          </div>
-          <div>
-            <p className="text-[11px] uppercase tracking-wider text-blue-400">
-              Оплата через CryptoBot
-            </p>
-            <h2 className="text-sm font-bold text-white">
-              Аренда: {activeOrder.title}
-            </h2>
-          </div>
-        </div>
-        <div className="mt-5 border-t border-neutral-800 pt-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-neutral-500">Сумма к оплате</span>
-            <span className="text-lg font-bold text-white">
-              {formattedPrice} {curr.symbol}
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-4 flex flex-col items-center rounded-2xl border border-white/5 bg-[#1A1A1A] p-6">
-        <p className="text-[11px] uppercase tracking-wider text-neutral-500">
-          Осталось времени
-        </p>
-        <div className="mt-2 text-5xl font-bold tabular-nums text-white tracking-widest">
-          {formatTime(paymentTimer)}
-        </div>
-        <div className="mt-4 h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
-          <div
-            className="h-full rounded-full bg-white transition-all duration-1000"
-            style={{ width: `${(paymentTimer / 600) * 100}%` }}
-          />
-        </div>
-        <p className="mt-4 text-center text-xs leading-relaxed text-neutral-500">
-          Откроется страница оплаты в CryptoBot.
-          <br />
-          После оплаты статус обновится автоматически.
-        </p>
-      </div>
-    </div>
-  );
-}
 
 // ─── SBP Payment View ────────────────────────────────────────────────────────
 
@@ -300,10 +229,12 @@ function AwaitingVerificationView({ activeOrder, currency }) {
 
 // ─── Paid View ───────────────────────────────────────────────────────────────
 
-function PaidView({ activeOrder, currency }) {
+function PaidView({ activeOrder, currency, credentials }) {
   const curr = CURRENCIES.find((c) => c.code === currency);
   const price = activeOrder.prices[currency.toLowerCase()];
   const formattedPrice = price.toLocaleString("ru-RU");
+  const login = credentials?.login || "—";
+  const password = credentials?.password || "—";
 
   return (
     <div className="px-4 pt-6 pb-6">
@@ -339,10 +270,10 @@ function PaidView({ activeOrder, currency }) {
           <div className="flex items-center justify-between rounded-xl bg-neutral-800/50 px-4 py-3">
             <div>
               <p className="text-[10px] uppercase tracking-wider text-neutral-500">Логин</p>
-              <p className="text-sm font-mono text-white">{activeOrder.title.toLowerCase().replace(/ /g, "")}@marx.shop</p>
+              <p className="text-sm font-mono text-white">{login}</p>
             </div>
             <button
-              onClick={() => handleCopy(`${activeOrder.title.toLowerCase().replace(/ /g, "")}@marx.shop`)}
+              onClick={() => handleCopy(login)}
               className="text-neutral-500 hover:text-white transition-colors"
             >
               <Copy size={16} />
@@ -351,10 +282,10 @@ function PaidView({ activeOrder, currency }) {
           <div className="flex items-center justify-between rounded-xl bg-neutral-800/50 px-4 py-3">
             <div>
               <p className="text-[10px] uppercase tracking-wider text-neutral-500">Пароль</p>
-              <p className="text-sm font-mono text-white">marx{activeOrder.id.slice(-3)}2024!</p>
+              <p className="text-sm font-mono text-white">{password}</p>
             </div>
             <button
-              onClick={() => handleCopy(`marx${activeOrder.id.slice(-3)}2024!`)}
+              onClick={() => handleCopy(password)}
               className="text-neutral-500 hover:text-white transition-colors"
             >
               <Copy size={16} />
@@ -547,6 +478,7 @@ export default function ProfileTab({
   payUrl,
   paymentDetails,
   cryptoInstructions,
+  credentials,
   onSelectMethod,
   onVerifyInvoice,
   onClearOrder,
@@ -563,7 +495,7 @@ export default function ProfileTab({
 
   // Paid — show credentials
   if (orderStatus === "paid") {
-    return <PaidView activeOrder={activeOrder} currency={currency} />;
+    return <PaidView activeOrder={activeOrder} currency={currency} credentials={credentials} />;
   }
 
   // Awaiting verification

@@ -37,6 +37,7 @@ function App() {
   const [payUrl, setPayUrl] = useState(null);
   const [paymentDetails, setPaymentDetails] = useState(null);
   const [cryptoInstructions, setCryptoInstructions] = useState(null);
+  const [credentials, setCredentials] = useState(null);
   const mainButtonRef = useRef(null);
   const pollingRef = useRef(null);
 
@@ -67,6 +68,7 @@ function App() {
           const res = await checkOrder(oid);
           if (res.status === "PAID") {
             setOrderStatus("paid");
+            setCredentials(res.credentials || null);
             stopPolling();
           } else if (res.status === "EXPIRED") {
             setActiveOrder(null);
@@ -142,20 +144,14 @@ function App() {
     const id = setInterval(() => {
       setPaymentTimer((t) => {
         if (t <= 1) {
-          setActiveOrder(null);
-          setOrderStatus(null);
-          setPaymentMethod(null);
-          setOrderId(null);
-          setPayUrl(null);
-          setPaymentDetails(null);
-          stopPolling();
+          handleClearOrder();
           return 0;
         }
         return t - 1;
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [activeOrder, orderStatus, paymentTimer, stopPolling]);
+  }, [activeOrder, orderStatus, paymentTimer, handleClearOrder]);
 
   // Step 1: Select account, show method selector
   const handleRent = useCallback(
@@ -188,6 +184,7 @@ function App() {
         setPaymentMethod(method);
         setPaymentTimer(600);
         setOrderStatus("pending");
+        startPolling(res.orderId);
 
         if (method === "crypto") {
           setPayUrl(null);
@@ -220,6 +217,7 @@ function App() {
     setPayUrl(null);
     setPaymentDetails(null);
     setCryptoInstructions(null);
+    setCredentials(null);
     setPaymentTimer(600);
     stopPolling();
     const tg = window.Telegram?.WebApp;
@@ -258,6 +256,7 @@ function App() {
             payUrl={payUrl}
             paymentDetails={paymentDetails}
             cryptoInstructions={cryptoInstructions}
+            credentials={credentials}
             onSelectMethod={handleSelectMethod}
             onVerifyInvoice={handleVerifyInvoice}
             onClearOrder={handleClearOrder}
