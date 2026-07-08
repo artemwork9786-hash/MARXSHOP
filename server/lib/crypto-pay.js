@@ -1,103 +1,63 @@
 const axios = require("axios");
-const https = require("https");
 
 const CRYPTO_BOT_TOKEN = process.env.CRYPTO_BOT_TOKEN;
-
-// Testnet: https://testnet-pay.crypto.bot  |  Mainnet: https://api.crypto.bot
 const BASE_URL = process.env.CRYPTO_PAY_API_URL || "https://testnet-pay.crypto.bot";
 
-const isTestnet = BASE_URL.includes("testnet");
-const SUPPORTED_FIAT = isTestnet ? ["USD"] : ["RUB", "UAH", "USD", "EUR", "GBP", "KZT"];
-
-// Disable SSL verification for testnet (SNI issue with testnet-pay.crypto.bot)
-const agent = new https.Agent({ rejectUnauthorized: false });
-
-const api = axios.create({
-  baseURL: `${BASE_URL}/api/`,
-  headers: {
-    "Content-Type": "application/json",
-    "Crypto-Pay-API-Token": CRYPTO_BOT_TOKEN,
-  },
-  httpsAgent: agent,
-  timeout: 15000,
-});
-
-/**
- * Create a fiat invoice via Crypto Pay API
- */
 async function createInvoice({ asset = "USDT", fiat, amount, paid_btn_name = "callback", paid_btn_url, payload }) {
-  if (!CRYPTO_BOT_TOKEN) {
-    throw new Error("CRYPTO_BOT_TOKEN is not set");
-  }
+  if (!CRYPTO_BOT_TOKEN) throw new Error("CRYPTO_BOT_TOKEN is not set");
 
-  const invoiceFiat = SUPPORTED_FIAT.includes(fiat) ? fiat : "USD";
+  const isTestnet = BASE_URL.includes("testnet");
+  const invoiceFiat = isTestnet ? "USD" : fiat;
   const invoiceAmount = isTestnet && fiat !== "USD" ? 500 : amount;
 
-  console.log(`[CRYPTO_PAY] Base URL: ${BASE_URL}/api/`);
-  console.log(`[CRYPTO_PAY] Creating invoice: ${invoiceFiat} ${invoiceAmount} (original: ${fiat} ${amount})`);
+  console.log(`[CRYPTO_PAY] POST ${BASE_URL}/api/createInvoice`);
+  console.log(`[CRYPTO_PAY] body: { asset: "${asset}", fiat: "${invoiceFiat}", amount: "${invoiceAmount}" }`);
 
-  const body = {
-    asset,
-    fiat: invoiceFiat,
-    amount: String(invoiceAmount),
-    paid_btn_name,
-    payload: String(payload),
-  };
-  if (paid_btn_url) body.paid_btn_url = paid_btn_url;
+  const { data } = await axios({
+    method: "POST",
+    url: `${BASE_URL}/api/createInvoice`,
+    headers: {
+      "Content-Type": "application/json",
+      "Crypto-Pay-API-Token": CRYPTO_BOT_TOKEN,
+    },
+    data: {
+      asset: asset,
+      fiat: invoiceFiat,
+      amount: String(invoiceAmount),
+      paid_btn_name: paid_btn_name,
+      paid_btn_url: paid_btn_url || "",
+      payload: String(payload),
+    },
+  });
 
-  try {
-    const { data } = await api.post("createInvoice", body);
+  console.log(`[CRYPTO_PAY] Response:`, JSON.stringify(data).substring(0, 300));
 
-    if (!data.ok) {
-      const errorMsg = data.error
-        ? `${data.error.code}: ${data.error.message}`
-        : JSON.stringify(data);
-      console.error(`[CRYPTO_PAY] API error: ${errorMsg}`);
-      throw new Error(`Crypto Pay API error: ${errorMsg}`);
-    }
-
-    console.log(`[CRYPTO_PAY] Invoice created: id=${data.result.invoice_id}`);
-    return {
-      payUrl: data.result.pay_url,
-      invoiceId: data.result.invoice_id,
-    };
-  } catch (err) {
-    if (err.response) {
-      console.error(`[CRYPTO_PAY] HTTP ${err.response.status}:`, JSON.stringify(err.response.data));
-    } else {
-      console.error(`[CRYPTO_PAY] Error:`, err.message);
-    }
-    throw err;
+  if (!data.ok) {
+    throw new Error(`Crypto Pay: ${JSON.stringify(data)}`);
   }
+
+  return {
+    payUrl: data.result.pay_url,
+    invoiceId: data.result.invoice_id,
+  };
 }
 
-/**
- * Get invoice status from Crypto Pay API
- */
 async function getInvoice(invoiceId) {
-  if (!CRYPTO_BOT_TOKEN) {
-    throw new Error("CRYPTO_BOT_TOKEN is not set");
-  }
+  if (!CRYPTO_BOT_TOKEN) throw new Error("CRYPTO_BOT_TOKEN is not set");
 
-  try {
-    const { data } = await api.get("getInvoices", {
-      params: { invoice_ids: invoiceId },
-    });
+  const { data } = await axios({
+    method: "GET",
+    url: `${BASE_URL}/api/getInvoices`,
+    headers: {
+      "Content-Type": "application/json",
+      "Crypto-Pay-API-Token": CRYPTO_BOT_TOKEN,
+    },
+    params: { invoice_ids: invoiceId },
+  });
 
-    if (!data.ok) {
-      throw new Error(`Crypto Pay API error: ${JSON.stringify(data)}`);
-    }
-
-    const invoices = data.result?.items || [];
-    return invoices[0] || null;
-  } catch (err) {
-    if (err.response) {
-      console.error(`[CRYPTO_PAY] getInvoice HTTP ${err.response.status}:`, JSON.stringify(err.response.data));
-    } else {
-      console.error(`[CRYPTO_PAY] getInvoice error:`, err.message);
-    }
-    throw err;
-  }
+  if (!data.ok) throw new Error(`Crypto Pay: ${JSON.stringify(data)}`);
+  const items = data.result?.items || [];
+  return items[0] || null;
 }
 
 module.exports = { createInvoice, getInvoice };
