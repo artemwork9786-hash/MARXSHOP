@@ -1,6 +1,11 @@
-// Testnet: https://crypto.bot  |  Mainnet: https://api.crypto.bot
-const CRYPTO_PAY_API = process.env.CRYPTO_PAY_API_URL || "https://crypto.bot";
 const CRYPTO_BOT_TOKEN = process.env.CRYPTO_BOT_TOKEN;
+
+// Testnet: https://testnet-pay.crypto.bot  |  Mainnet: https://api.crypto.bot
+const CRYPTO_PAY_API = process.env.CRYPTO_PAY_API_URL || "https://testnet-pay.crypto.bot";
+
+// Testnet only supports USD fiat — force it
+const isTestnet = CRYPTO_PAY_API.includes("testnet");
+const SUPPORTED_FIAT = isTestnet ? ["USD"] : ["RUB", "UAH", "USD", "EUR", "GBP", "KZT"];
 
 /**
  * Create a fiat invoice via Crypto Pay API
@@ -12,16 +17,21 @@ async function createInvoice({ asset = "USDT", fiat, amount, paid_btn_name = "ca
     throw new Error("CRYPTO_BOT_TOKEN is not set");
   }
 
+  // Force USD for testnet — RUB/UAH not supported
+  const invoiceFiat = SUPPORTED_FIAT.includes(fiat) ? fiat : "USD";
+  const invoiceAmount = isTestnet && fiat !== "USD" ? 500 : amount;
+
+  console.log(`[CRYPTO_PAY] API: ${CRYPTO_PAY_API}`);
+  console.log(`[CRYPTO_PAY] Creating invoice: ${invoiceFiat} ${invoiceAmount} (original: ${fiat} ${amount}), asset: ${asset}`);
+
   const body = {
     asset,
-    fiat,
-    amount: String(amount),
+    fiat: invoiceFiat,
+    amount: String(invoiceAmount),
     paid_btn_name,
     payload: String(payload),
   };
   if (paid_btn_url) body.paid_btn_url = paid_btn_url;
-
-  console.log(`[CRYPTO_PAY] Creating invoice: ${fiat} ${amount} via ${CRYPTO_PAY_API}`);
 
   let res;
   try {
@@ -38,15 +48,18 @@ async function createInvoice({ asset = "USDT", fiat, amount, paid_btn_name = "ca
     throw err;
   }
 
+  const responseText = await res.text();
+  console.log(`[CRYPTO_PAY] Response status: ${res.status}`);
+  console.log(`[CRYPTO_PAY] Response body: ${responseText.substring(0, 500)}`);
+
   let data;
   try {
-    data = await res.json();
+    data = JSON.parse(responseText);
   } catch (err) {
-    console.error(`[CRYPTO_PAY] Failed to parse response: ${err.message}`);
-    throw err;
+    console.error(`[CRYPTO_PAY] Failed to parse JSON: ${err.message}`);
+    console.error(`[CRYPTO_PAY] Raw response was: ${responseText}`);
+    throw new Error(`Crypto Pay returned non-JSON (status ${res.status}): ${responseText.substring(0, 200)}`);
   }
-
-  console.log(`[CRYPTO_PAY] Response status: ${res.status}, ok: ${data.ok}`);
 
   if (!data.ok) {
     const errorMsg = data.error
@@ -56,6 +69,7 @@ async function createInvoice({ asset = "USDT", fiat, amount, paid_btn_name = "ca
     throw new Error(`Crypto Pay API error: ${errorMsg}`);
   }
 
+  console.log(`[CRYPTO_PAY] Invoice created: id=${data.result.invoice_id}`);
   return {
     payUrl: data.result.pay_url,
     invoiceId: data.result.invoice_id,
