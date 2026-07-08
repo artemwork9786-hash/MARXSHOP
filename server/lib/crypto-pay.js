@@ -9,9 +9,10 @@ const subdomain = "pay.";
 const domain = "crypto.bot";
 const API_BASE = protocol + subdomain + domain + "/api";
 
-// Explicit SNI agent
+// Explicit SNI agent — force IPv4 to avoid Railway DNS/IPv6 issues
 const agent = new https.Agent({
   servername: subdomain + domain,
+  family: 4,
 });
 
 async function createInvoice({ asset = "USDT", payload }) {
