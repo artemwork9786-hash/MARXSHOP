@@ -1,32 +1,32 @@
-const { execSync } = require("child_process");
+const { execFileSync } = require("child_process");
 
 const CRYPTO_BOT_TOKEN = process.env.CRYPTO_BOT_TOKEN;
 const API_URL = "https://pay.crypto.bot/api";
 
 function curlPost(path, body) {
   const url = `${API_URL}${path}`;
-  const cmd = [
-    "curl", "-s", "-X", "POST", url,
+  console.log(`[CRYPTO_PAY] curl POST ${url}`);
+
+  const output = execFileSync("curl", [
+    "-s", "-X", "POST", url,
     "-H", "Content-Type: application/json",
     "-H", `Crypto-Pay-API-Token: ${CRYPTO_BOT_TOKEN}`,
     "-d", JSON.stringify(body),
-  ].map((a) => `"${a.replace(/"/g, '\\"')}"`).join(" ");
+  ], { timeout: 30000, encoding: "utf-8" });
 
-  console.log(`[CRYPTO_PAY] curl POST ${url}`);
-  const output = execSync(cmd, { timeout: 30000, encoding: "utf-8" });
   return JSON.parse(output);
 }
 
 function curlGet(path) {
   const url = `${API_URL}${path}`;
-  const cmd = [
-    "curl", "-s", "-X", "GET", url,
+  console.log(`[CRYPTO_PAY] curl GET ${url}`);
+
+  const output = execFileSync("curl", [
+    "-s", "-X", "GET", url,
     "-H", "Content-Type: application/json",
     "-H", `Crypto-Pay-API-Token: ${CRYPTO_BOT_TOKEN}`,
-  ].map((a) => `"${a.replace(/"/g, '\\"')}"`).join(" ");
+  ], { timeout: 30000, encoding: "utf-8" });
 
-  console.log(`[CRYPTO_PAY] curl GET ${url}`);
-  const output = execSync(cmd, { timeout: 30000, encoding: "utf-8" });
   return JSON.parse(output);
 }
 
