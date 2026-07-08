@@ -8,7 +8,7 @@ function curlPost(path, body) {
   console.log(`[CRYPTO_PAY] POST ${url}`);
 
   const result = spawnSync("curl", [
-    "-s", "-w", "\n%{http_code}",
+    "-k", "-s", "-w", "\n%{http_code}",
     "-X", "POST", url,
     "-H", "Content-Type: application/json",
     "-H", `Crypto-Pay-API-Token: ${CRYPTO_BOT_TOKEN}`,
@@ -41,7 +41,7 @@ function curlGet(path) {
   console.log(`[CRYPTO_PAY] GET ${url}`);
 
   const result = spawnSync("curl", [
-    "-s", "-w", "\n%{http_code}",
+    "-k", "-s", "-w", "\n%{http_code}",
     "-X", "GET", url,
     "-H", "Content-Type: application/json",
     "-H", `Crypto-Pay-API-Token: ${CRYPTO_BOT_TOKEN}`,
