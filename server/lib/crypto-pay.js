@@ -1,76 +1,47 @@
-const https = require("https");
-const dns = require("dns");
+const { execSync } = require("child_process");
 
 const CRYPTO_BOT_TOKEN = process.env.CRYPTO_BOT_TOKEN;
+const API_URL = "https://pay.crypto.bot/api";
 
-// Cloudflare Worker proxy — bypasses Railway SSL/DNS issues
-const WORKER_URL = "https://quiet-snow-054e.artemwork9786.workers.dev";
+function curlPost(path, body) {
+  const url = `${API_URL}${path}`;
+  const cmd = [
+    "curl", "-s", "-X", "POST", url,
+    "-H", "Content-Type: application/json",
+    "-H", `Crypto-Pay-API-Token: ${CRYPTO_BOT_TOKEN}`,
+    "-d", JSON.stringify(body),
+  ].map((a) => `"${a.replace(/"/g, '\\"')}"`).join(" ");
 
-let cachedIp = null;
-let cacheExpiry = 0;
-
-async function resolveHost() {
-  if (cachedIp && Date.now() < cacheExpiry) return cachedIp;
-  const url = new URL(WORKER_URL);
-  const ips = await dns.promises.resolve4(url.hostname, { server: "8.8.8.8" });
-  cachedIp = ips[0];
-  cacheExpiry = Date.now() + 5 * 60 * 1000;
-  console.log(`[CRYPTO_PAY] Resolved worker → ${cachedIp}`);
-  return cachedIp;
+  console.log(`[CRYPTO_PAY] curl POST ${url}`);
+  const output = execSync(cmd, { timeout: 30000, encoding: "utf-8" });
+  return JSON.parse(output);
 }
 
-function httpsRequest(url, options, body) {
-  return new Promise((resolve, reject) => {
-    const req = https.request(url, options, (res) => {
-      let data = "";
-      res.on("data", (chunk) => (data += chunk));
-      res.on("end", () => {
-        try {
-          resolve({ status: res.statusCode, data: JSON.parse(data) });
-        } catch {
-          reject(new Error(`Non-JSON (${res.statusCode}): ${data.substring(0, 200)}`));
-        }
-      });
-    });
-    req.on("error", reject);
-    if (body) req.write(JSON.stringify(body));
-    req.end();
-  });
+function curlGet(path) {
+  const url = `${API_URL}${path}`;
+  const cmd = [
+    "curl", "-s", "-X", "GET", url,
+    "-H", "Content-Type: application/json",
+    "-H", `Crypto-Pay-API-Token: ${CRYPTO_BOT_TOKEN}`,
+  ].map((a) => `"${a.replace(/"/g, '\\"')}"`).join(" ");
+
+  console.log(`[CRYPTO_PAY] curl GET ${url}`);
+  const output = execSync(cmd, { timeout: 30000, encoding: "utf-8" });
+  return JSON.parse(output);
 }
 
 async function createInvoice({ asset = "USDT", payload }) {
   if (!CRYPTO_BOT_TOKEN) throw new Error("CRYPTO_BOT_TOKEN is not set");
 
-  const ip = await resolveHost();
-  const path = "/createInvoice";
+  const data = curlPost("/createInvoice", {
+    asset: asset,
+    amount: "0.1",
+    paid_btn_name: "callback",
+    paid_btn_url: process.env.FRONTEND_URL || "https://artemwork9786-hash.github.io/MARXSHOP",
+    payload: String(payload),
+  });
 
-  console.log(`[CRYPTO_PAY] POST ${WORKER_URL}${path}`);
-
-  const { status, data } = await httpsRequest(
-    `${WORKER_URL}${path}`,
-    {
-      method: "POST",
-      hostname: ip,
-      port: 443,
-      path: path,
-      servername: new URL(WORKER_URL).hostname,
-      family: 4,
-      minVersion: "TLSv1.2",
-      headers: {
-        "Content-Type": "application/json",
-        "Crypto-Pay-API-Token": CRYPTO_BOT_TOKEN,
-      },
-    },
-    {
-      asset: asset,
-      amount: "0.1",
-      paid_btn_name: "callback",
-      paid_btn_url: process.env.FRONTEND_URL || "https://artemwork9786-hash.github.io/MARXSHOP",
-      payload: String(payload),
-    }
-  );
-
-  console.log(`[CRYPTO_PAY] Response (${status}):`, JSON.stringify(data).substring(0, 300));
+  console.log(`[CRYPTO_PAY] Response:`, JSON.stringify(data).substring(0, 300));
 
   if (!data.ok) {
     throw new Error(`Crypto Pay: ${JSON.stringify(data)}`);
@@ -85,26 +56,7 @@ async function createInvoice({ asset = "USDT", payload }) {
 async function getInvoice(invoiceId) {
   if (!CRYPTO_BOT_TOKEN) throw new Error("CRYPTO_BOT_TOKEN is not set");
 
-  const ip = await resolveHost();
-  const path = `/getInvoices?invoice_ids=${invoiceId}`;
-
-  const { data } = await httpsRequest(
-    `${WORKER_URL}${path}`,
-    {
-      method: "GET",
-      hostname: ip,
-      port: 443,
-      path: path,
-      servername: new URL(WORKER_URL).hostname,
-      family: 4,
-      minVersion: "TLSv1.2",
-      headers: {
-        "Content-Type": "application/json",
-        "Crypto-Pay-API-Token": CRYPTO_BOT_TOKEN,
-      },
-    },
-    null
-  );
+  const data = curlGet(`/getInvoices?invoice_ids=${invoiceId}`);
 
   if (!data.ok) throw new Error(`Crypto Pay: ${JSON.stringify(data)}`);
   const items = data.result?.items || [];
