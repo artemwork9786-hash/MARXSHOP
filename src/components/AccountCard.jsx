@@ -23,14 +23,14 @@ function formatTime(sec) {
 function GlassPlayer({ src, poster }) {
   const containerRef = useRef(null);
   const videoRef = useRef(null);
+  const inputRef = useRef(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
-  const [seeking, setSeeking] = useState(false);
+  const [dragging, setDragging] = useState(false);
   const hideTimer = useRef(null);
-  const currentTimeRef = useRef(0);
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -41,27 +41,27 @@ function GlassPlayer({ src, poster }) {
     else { v.pause(); setPlaying(false); }
   }, []);
 
-  const onSeekInput = useCallback((e) => {
+  const handleInput = useCallback((e) => {
     const v = videoRef.current;
     if (!v || !v.duration) return;
-    const val = Number(e.target.value);
-    const pct = val / 1000;
-    currentTimeRef.current = pct * v.duration;
-    setCurrentTime(currentTimeRef.current);
+    const val = parseFloat(e.target.value);
+    const time = (val / 1000) * v.duration;
+    setCurrentTime(time);
   }, []);
 
-  const onSeekStart = useCallback(() => {
-    setSeeking(true);
+  const handlePointerDown = useCallback(() => {
+    setDragging(true);
     setIsLoading(true);
   }, []);
 
-  const onSeekEnd = useCallback((e) => {
+  const handlePointerUp = useCallback((e) => {
     const v = videoRef.current;
     if (!v || !v.duration) return;
-    const val = Number(e.target.value);
-    const pct = val / 1000;
-    v.currentTime = pct * v.duration;
-    setSeeking(false);
+    const val = parseFloat(e.target.value);
+    const time = (val / 1000) * v.duration;
+    v.currentTime = time;
+    setCurrentTime(time);
+    setDragging(false);
   }, []);
 
   const toggleFullscreen = useCallback(() => {
@@ -79,10 +79,7 @@ function GlassPlayer({ src, poster }) {
     if (!v) return;
 
     const onTimeUpdate = () => {
-      if (!seeking) {
-        currentTimeRef.current = v.currentTime;
-        setCurrentTime(v.currentTime);
-      }
+      if (!dragging) setCurrentTime(v.currentTime);
     };
     const onLoadedMetadata = () => setDuration(v.duration);
     const onEnded = () => { setPlaying(false); setShowControls(true); setIsLoading(false); };
@@ -90,9 +87,9 @@ function GlassPlayer({ src, poster }) {
     const onPause = () => setPlaying(false);
     const onWaiting = () => setIsLoading(true);
     const onCanPlay = () => setIsLoading(false);
-    const onPlaying = () => setIsLoading(false);
-    const onSeeking = () => setIsLoading(true);
-    const onSeeked = () => setIsLoading(false);
+    const onPlayingEv = () => setIsLoading(false);
+    const onSeekingEv = () => setIsLoading(true);
+    const onSeekedEv = () => setIsLoading(false);
 
     v.addEventListener("timeupdate", onTimeUpdate);
     v.addEventListener("loadedmetadata", onLoadedMetadata);
@@ -101,9 +98,9 @@ function GlassPlayer({ src, poster }) {
     v.addEventListener("pause", onPause);
     v.addEventListener("waiting", onWaiting);
     v.addEventListener("canplay", onCanPlay);
-    v.addEventListener("playing", onPlaying);
-    v.addEventListener("seeking", onSeeking);
-    v.addEventListener("seeked", onSeeked);
+    v.addEventListener("playing", onPlayingEv);
+    v.addEventListener("seeking", onSeekingEv);
+    v.addEventListener("seeked", onSeekedEv);
 
     return () => {
       v.removeEventListener("timeupdate", onTimeUpdate);
@@ -113,11 +110,11 @@ function GlassPlayer({ src, poster }) {
       v.removeEventListener("pause", onPause);
       v.removeEventListener("waiting", onWaiting);
       v.removeEventListener("canplay", onCanPlay);
-      v.removeEventListener("playing", onPlaying);
-      v.removeEventListener("seeking", onSeeking);
-      v.removeEventListener("seeked", onSeeked);
+      v.removeEventListener("playing", onPlayingEv);
+      v.removeEventListener("seeking", onSeekingEv);
+      v.removeEventListener("seeked", onSeekedEv);
     };
-  }, [src, seeking]);
+  }, [src, dragging]);
 
   const resetHideTimer = useCallback(() => {
     setShowControls(true);
@@ -132,19 +129,20 @@ function GlassPlayer({ src, poster }) {
     return () => clearTimeout(hideTimer.current);
   }, []);
 
+  const inputValue = (currentTime / (duration || 1)) * 1000;
+
   return (
     <div
       ref={containerRef}
       className="relative h-48 w-full rounded-t-2xl overflow-hidden bg-black cursor-pointer"
       onClick={(e) => {
-        if (e.target.closest("[data-glass-controls]") || e.target.closest("input[type=range]")) return;
+        if (e.target.closest("[data-glass-controls]")) return;
         togglePlay();
         resetHideTimer();
       }}
       onMouseMove={resetHideTimer}
       onTouchStart={resetHideTimer}
     >
-      {/* Video element */}
       <video
         ref={videoRef}
         src={src}
@@ -154,7 +152,6 @@ function GlassPlayer({ src, poster }) {
         className="absolute inset-0 h-full w-full object-cover"
       />
 
-      {/* Center play button (shown when paused) */}
       {!playing && !isLoading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 backdrop-blur-md border border-white/20 shadow-xl shadow-black/40">
@@ -163,7 +160,6 @@ function GlassPlayer({ src, poster }) {
         </div>
       )}
 
-      {/* Loading spinner */}
       {isLoading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 backdrop-blur-md border border-white/20 shadow-xl shadow-black/40">
@@ -172,14 +168,12 @@ function GlassPlayer({ src, poster }) {
         </div>
       )}
 
-      {/* Status badge */}
       <div className="absolute top-3 left-3 z-30">
         <div className="rounded-full bg-white/90 backdrop-blur-sm px-2.5 py-1 text-[10px] font-bold text-black uppercase tracking-wider">
           Видео
         </div>
       </div>
 
-      {/* Glassmorphism Control Bar */}
       <div
         data-glass-controls
         className={`absolute bottom-0 left-0 right-0 z-40 transition-all duration-300 ease-out ${
@@ -191,61 +185,43 @@ function GlassPlayer({ src, poster }) {
       >
         <div className="mx-2 mb-2 rounded-2xl border border-white/10 bg-[#121212]/50 backdrop-blur-lg shadow-[0_8px_32px_rgba(0,0,0,0.7)]">
           <div className="flex items-center gap-3 px-3 py-2">
-            {/* Play/Pause */}
-            <button
-              onClick={togglePlay}
-              className="shrink-0 text-white hover:text-white/80 transition-colors"
-            >
-              {playing ? (
-                <Pause size={16} fill="white" />
-              ) : (
-                <Play size={16} fill="white" className="ml-0.5" />
-              )}
+            <button onClick={togglePlay} className="shrink-0 text-white hover:text-white/80 transition-colors">
+              {playing ? <Pause size={16} fill="white" /> : <Play size={16} fill="white" className="ml-0.5" />}
             </button>
 
-            {/* Timer */}
             <span className="text-[11px] font-medium text-white/70 tabular-nums shrink-0 select-none">
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
 
-            {/* Range input with expanded hitbox */}
             <div className="flex-1 relative flex items-center h-8">
-              {/* Visual track underneath */}
               <div
-                className="absolute left-0 right-0 h-1 rounded-full bg-white/15 pointer-events-none"
+                className="absolute left-0 right-0 h-1 rounded-full pointer-events-none"
                 style={{
                   background: `linear-gradient(to right, #ffffff ${progress}%, rgba(255,255,255,0.15) ${progress}%)`,
                 }}
               />
-              {/* Thumb visual indicator */}
               <div
-                className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none transition-[left] duration-100"
+                className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none"
                 style={{ left: `calc(${progress}% - 6px)` }}
               />
-              {/* Transparent tall input for touch/click */}
               <input
+                ref={inputRef}
                 type="range"
                 min="0"
                 max="1000"
-                value={seeking || !duration ? (currentTime / (duration || 1)) * 1000 : (currentTime / duration) * 1000}
-                onInput={onSeekInput}
-                onMouseDown={onSeekStart}
-                onMouseUp={onSeekEnd}
-                onTouchStart={onSeekStart}
-                onTouchEnd={onSeekEnd}
-                className="absolute inset-0 w-full h-full appearance-none bg-transparent cursor-pointer opacity-0 z-10
-                  [&::-webkit-slider-runnable-track]:h-8 [&::-webkit-slider-runnable-track]:bg-transparent
-                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-8 [&::-webkit-slider-thumb]:w-full
-                  [&::-moz-range-track]:h-8 [&::-moz-range-track]:bg-transparent
-                  [&::-moz-range-thumb]:h-8 [&::-moz-range-thumb]:w-full [&::-moz-range-thumb]:bg-transparent [&::-moz-range-thumb]:border-none"
+                step="1"
+                value={Math.round(inputValue)}
+                onInput={handleInput}
+                onMouseDown={handlePointerDown}
+                onMouseUp={handlePointerUp}
+                onTouchStart={handlePointerDown}
+                onTouchEnd={handlePointerUp}
+                className="absolute inset-0 w-full h-full appearance-none bg-transparent cursor-pointer opacity-0 z-10 m-0 p-0"
+                style={{ WebkitAppearance: "none", MozAppearance: "none" }}
               />
             </div>
 
-            {/* Fullscreen */}
-            <button
-              onClick={toggleFullscreen}
-              className="shrink-0 text-white/70 hover:text-white transition-colors"
-            >
+            <button onClick={toggleFullscreen} className="shrink-0 text-white/70 hover:text-white transition-colors">
               <Maximize size={16} />
             </button>
           </div>
@@ -267,7 +243,6 @@ export default function AccountCard({ account, currency, rates, onRent }) {
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#1A1A1A]">
-      {/* Media Zone */}
       <div className="relative h-48 w-full">
         {hasVideo ? (
           <GlassPlayer src={videoSrc} poster={account.image_url || undefined} />
@@ -279,7 +254,6 @@ export default function AccountCard({ account, currency, rates, onRent }) {
           />
         )}
 
-        {/* Status badge */}
         <span
           className={`absolute top-3 left-3 z-30 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
             isAvailable ? "bg-white text-black" : "bg-neutral-700 text-neutral-400"
