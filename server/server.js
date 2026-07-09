@@ -19,18 +19,41 @@ function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
+const DEFAULT_ACCOUNTS = [
+  {
+    id: "marx-vip-001", title: "MARX VIP #1", price: 23000,
+    status: "В наличии", description: "Полный гардероб скинов, завоеватель, все оружие в легендарных скинах",
+    tags: ["M416 Дракон", "Костюм Мумия", "AWM Космос"],
+    video_url: "", image_url: "/placeholder.svg",
+  },
+  {
+    id: "marx-vip-002", title: "MARX VIP #2", price: 18500,
+    status: "Занят", description: "Аккаунт с редкими скинами транспорта и оружия",
+    tags: ["AKM Викинг", "УАЗ Тёмный Рыцарь", "Шлем Апокалипсиса"],
+    video_url: "", image_url: "/placeholder.svg",
+  },
+  {
+    id: "marx-vip-003", title: "MARX VIP #3", price: 31000,
+    status: "В наличии", description: "Снайперский аккаунт с лучшими винтовками",
+    tags: ["Kar98k Снеговик", "Костюм Фантом", "M24 Золотой"],
+    video_url: "", image_url: "/placeholder.svg",
+  },
+];
+
 function loadAccounts() {
   ensureDataDir();
   try {
-    if (!fs.existsSync(PRODUCTS_FILE)) {
-      console.log(`[DATA] products.json not found at ${PRODUCTS_FILE}, creating empty`);
-      fs.writeFileSync(PRODUCTS_FILE, "[]", "utf-8");
-      return [];
+    if (fs.existsSync(PRODUCTS_FILE)) {
+      const raw = fs.readFileSync(PRODUCTS_FILE, "utf-8");
+      const parsed = JSON.parse(raw);
+      if (Array.isArray(parsed) && parsed.length > 0) {
+        console.log(`[DATA] Loaded ${parsed.length} accounts from ${PRODUCTS_FILE}`);
+        return parsed;
+      }
     }
-    const raw = fs.readFileSync(PRODUCTS_FILE, "utf-8");
-    const accounts = JSON.parse(raw);
-    console.log(`[DATA] Loaded ${accounts.length} accounts from ${PRODUCTS_FILE}`);
-    return accounts;
+    console.log(`[DATA] No existing data, writing defaults to ${PRODUCTS_FILE}`);
+    fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(DEFAULT_ACCOUNTS, null, 2), "utf-8");
+    return [...DEFAULT_ACCOUNTS];
   } catch (e) {
     console.error(`[DATA] Error loading ${PRODUCTS_FILE}:`, e.message);
     return [];
