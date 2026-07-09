@@ -88,7 +88,7 @@ function AddScreen({ onDone }) {
 
 // ─── Screen: Account List ────────────────────────────────────────────────────
 
-function ListScreen({ onEdit, onAdd }) {
+function ListScreen({ onEdit, onAdd, onAccountsChanged }) {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
 
@@ -108,6 +108,7 @@ function ListScreen({ onEdit, onAdd }) {
     try {
       await deleteAccount(id);
       setAccounts((prev) => prev.filter((a) => a.id !== id));
+      if (onAccountsChanged) onAccountsChanged();
     } catch { /* ignore */ }
   };
 
@@ -241,9 +242,13 @@ function EditScreen({ account, onBack }) {
 
 // ─── Main AdminPanel ─────────────────────────────────────────────────────────
 
-export default function AdminPanel() {
+export default function AdminPanel({ onAccountsChanged }) {
   const [view, setView] = useState("list");
   const [selectedAccount, setSelectedAccount] = useState(null);
+
+  const handleAccountsChanged = () => {
+    if (onAccountsChanged) onAccountsChanged();
+  };
 
   return (
     <div className="mx-4 mt-6 rounded-2xl border border-white/5 bg-[#1A1A1A] p-4">
@@ -261,11 +266,12 @@ export default function AdminPanel() {
         <ListScreen
           onAdd={() => setView("add")}
           onEdit={(account) => { setSelectedAccount(account); setView("edit"); }}
+          onAccountsChanged={handleAccountsChanged}
         />
       )}
-      {view === "add" && <AddScreen onDone={() => setView("list")} />}
+      {view === "add" && <AddScreen onDone={() => { handleAccountsChanged(); setView("list"); }} />}
       {view === "edit" && selectedAccount && (
-        <EditScreen account={selectedAccount} onBack={() => setView("list")} />
+        <EditScreen account={selectedAccount} onBack={() => { handleAccountsChanged(); setView("list"); }} />
       )}
     </div>
   );

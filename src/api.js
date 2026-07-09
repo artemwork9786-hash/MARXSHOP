@@ -2,6 +2,7 @@ const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
 async function request(path, options = {}) {
   const res = await fetch(`${API_URL}${path}`, {
+    cache: "no-store",
     headers: { "Content-Type": "application/json", ...options.headers },
     ...options,
   });
@@ -12,11 +13,11 @@ async function request(path, options = {}) {
 // ─── Accounts CRUD ───────────────────────────────────────────────────────────
 
 export function getAccounts() {
-  return request("/api/accounts");
+  return request(`/api/accounts?_t=${Date.now()}`);
 }
 
 export function getRates() {
-  return request("/api/rates");
+  return request(`/api/rates?_t=${Date.now()}`);
 }
 
 export function addAccount(account) {
@@ -45,6 +46,7 @@ export async function uploadVideo(file) {
   const res = await fetch(`${API_URL}/api/upload-video`, {
     method: "POST",
     body: formData,
+    cache: "no-store",
   });
   if (!res.ok) throw new Error(`Upload error: ${res.status}`);
   return res.json();
@@ -60,7 +62,7 @@ export function createOrder({ accountId, currency, method, tgInitData }) {
 }
 
 export function checkOrder(orderId) {
-  return request(`/api/check-order?orderId=${orderId}`);
+  return request(`/api/check-order?orderId=${orderId}&_t=${Date.now()}`);
 }
 
 export function confirmSbp(orderId) {
