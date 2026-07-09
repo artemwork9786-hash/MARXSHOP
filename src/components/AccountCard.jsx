@@ -339,8 +339,28 @@ export default function AccountCard({ account, currency, rates, onRent }) {
   const videoSrc = hasVideo ? API_URL + account.video_url : null;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#1A1A1A] shadow-2xl shadow-black/80 transition-all duration-300 hover:border-white/15 active:border-white/15">
-      <div className="relative h-48 w-full">
+    <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#1A1A1A] shadow-2xl shadow-black/80 transition-all duration-300 hover:border-white/15 active:border-white/15">
+      {/* Ambient glow from account media */}
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+        {account.image_url && account.image_url !== "/placeholder.svg" ? (
+          <img
+            src={account.image_url}
+            alt=""
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] object-cover opacity-25 blur-[100px] scale-125"
+          />
+        ) : account.video_url ? (
+          <video
+            src={`${API_URL}${account.video_url}#t=0.001`}
+            muted
+            playsInline
+            preload="metadata"
+            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] object-cover opacity-25 blur-[100px] scale-125"
+          />
+        ) : null}
+      </div>
+
+      <div className="relative z-10">
+        <div className="relative h-48 w-full">
         {hasVideo ? (
           <GlassPlayer src={videoSrc} poster={account.image_url || undefined} />
         ) : (
@@ -384,6 +404,7 @@ export default function AccountCard({ account, currency, rates, onRent }) {
             Арендовать
           </button>
         </div>
+      </div>
       </div>
     </div>
   );
