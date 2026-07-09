@@ -24,6 +24,7 @@ function GlassPlayer({ src, poster }) {
   const containerRef = useRef(null);
   const videoRef = useRef(null);
   const inputRef = useRef(null);
+  const volumeRef = useRef(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
@@ -33,6 +34,7 @@ function GlassPlayer({ src, poster }) {
   const [volume, setVolume] = useState(0.5);
   const [muted, setMuted] = useState(false);
   const [showVolume, setShowVolume] = useState(false);
+  const [volumeDragging, setVolumeDragging] = useState(false);
   const hideTimer = useRef(null);
   const volumeTimer = useRef(null);
 
@@ -75,10 +77,25 @@ function GlassPlayer({ src, poster }) {
     setMuted(v.muted);
   }, []);
 
+  const setVolumeFromY = useCallback((clientY) => {
+    const el = volumeRef.current;
+    const v = videoRef.current;
+    if (!el || !v) return;
+    const rect = el.getBoundingClientRect();
+    const pct = 1 - (clientY - rect.top) / rect.height;
+    const val = Math.max(0, Math.min(1, pct));
+    v.volume = val;
+    setVolume(val);
+    if (val > 0 && v.muted) {
+      v.muted = false;
+      setMuted(false);
+    }
+  }, []);
+
   const handleVolumeChange = useCallback((e) => {
     const v = videoRef.current;
     if (!v) return;
-    const val = parseFloat(e.target.value);
+    const val = parseFloat(e.target.value) / 100;
     v.volume = val;
     setVolume(val);
     if (val > 0 && v.muted) {
@@ -252,7 +269,7 @@ function GlassPlayer({ src, poster }) {
             <div
               className="relative shrink-0"
               onMouseEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }}
-              onMouseLeave={() => { volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}
+              onMouseLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}
             >
               <button onClick={toggleMute} className="text-white/70 hover:text-white transition-colors">
                 {muted || volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
@@ -262,9 +279,28 @@ function GlassPlayer({ src, poster }) {
                 <div
                   className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 flex flex-col items-center p-2.5 rounded-xl border border-white/10 bg-black/60 backdrop-blur-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
                   onMouseEnter={() => clearTimeout(volumeTimer.current)}
-                  onMouseLeave={() => { volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}
+                  onMouseLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}
                 >
-                  <div className="relative h-24 w-8">
+                  <div
+                    ref={volumeRef}
+                    className="relative h-24 w-8 cursor-pointer touch-none select-none"
+                    onPointerDown={(e) => {
+                      e.preventDefault();
+                      e.stopPropagation();
+                      setVolumeDragging(true);
+                      volumeRef.current?.setPointerCapture(e.pointerId);
+                      setVolumeFromY(e.clientY);
+                    }}
+                    onPointerMove={(e) => {
+                      if (!volumeDragging) return;
+                      e.preventDefault();
+                      setVolumeFromY(e.clientY);
+                    }}
+                    onPointerUp={(e) => {
+                      setVolumeDragging(false);
+                      volumeRef.current?.releasePointerCapture(e.pointerId);
+                    }}
+                  >
                     {/* Visual track */}
                     <div className="absolute bottom-1 top-1 left-1/2 -translate-x-1/2 w-1 rounded-full bg-white/15 pointer-events-none" />
                     <div
@@ -276,19 +312,6 @@ function GlassPlayer({ src, poster }) {
                       className="absolute left-1/2 -translate-x-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none"
                       style={{ bottom: `calc(${(muted ? 0 : volume) * 92}% + 1px - 6px)` }}
                     />
-                    {/* Rotated input for vertical drag */}
-                    <div className="absolute inset-0 flex items-center justify-center">
-                      <input
-                        type="range"
-                        min="0"
-                        max="100"
-                        step="1"
-                        value={muted ? 0 : Math.round(volume * 100)}
-                        onInput={handleVolumeChange}
-                        className="w-24 h-1 appearance-none bg-transparent cursor-pointer opacity-0 z-10"
-                        style={{ transform: "rotate(-90deg)", WebkitAppearance: "none" }}
-                      />
-                    </div>
                   </div>
                 </div>
               )}
