@@ -5,4 +5,13 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   base: '/MARXSHOP/',
   plugins: [react(), tailwindcss()],
+  build: {
+    rollupOptions: {
+      output: {
+        entryFileNames: 'assets/[name]-[hash].js',
+        chunkFileNames: 'assets/[name]-[hash].js',
+        assetFileNames: 'assets/[name]-[hash].[ext]',
+      },
+    },
+  },
 });
