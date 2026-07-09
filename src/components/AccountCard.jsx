@@ -23,7 +23,6 @@ function formatTime(sec) {
 function GlassPlayer({ src, poster, title, status }) {
   const containerRef = useRef(null);
   const videoRef = useRef(null);
-  const canvasRef = useRef(null);
   const inputRef = useRef(null);
   const volumeRef = useRef(null);
   const [playing, setPlaying] = useState(false);
@@ -38,8 +37,6 @@ function GlassPlayer({ src, poster, title, status }) {
   const [volumeDragging, setVolumeDragging] = useState(false);
   const hideTimer = useRef(null);
   const volumeTimer = useRef(null);
-  const rafId = useRef(null);
-  const isPlayingRef = useRef(false);
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -171,44 +168,6 @@ function GlassPlayer({ src, poster, title, status }) {
     return () => clearTimeout(hideTimer.current);
   }, []);
 
-  // Canvas 60fps sync — runs only when video is playing
-  useEffect(() => {
-    const v = videoRef.current;
-    const canvas = canvasRef.current;
-    if (!v || !canvas) return;
-
-    const ctx = canvas.getContext("2d");
-
-    const draw = () => {
-      if (!isPlayingRef.current) {
-        rafId.current = requestAnimationFrame(draw);
-        return;
-      }
-      if (v.readyState >= 2) {
-        ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
-
-        // Gradient mask: dense left → transparent right
-        const grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
-        grad.addColorStop(0, "rgba(0,0,0,1)");
-        grad.addColorStop(0.4, "rgba(0,0,0,0.8)");
-        grad.addColorStop(1, "rgba(0,0,0,0)");
-        ctx.globalCompositeOperation = "destination-in";
-        ctx.fillStyle = grad;
-        ctx.fillRect(0, 0, canvas.width, canvas.height);
-        ctx.globalCompositeOperation = "source-over";
-      }
-      rafId.current = requestAnimationFrame(draw);
-    };
-
-    rafId.current = requestAnimationFrame(draw);
-    return () => { if (rafId.current) cancelAnimationFrame(rafId.current); };
-  }, [src]);
-
-  // Sync isPlayingRef with state
-  useEffect(() => {
-    isPlayingRef.current = playing;
-  }, [playing]);
-
   const inputValue = (currentTime / (duration || 1)) * 1000;
   const isAvailable = status === "В наличии";
 
@@ -279,23 +238,13 @@ function GlassPlayer({ src, poster, title, status }) {
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-2 mb-2 rounded-2xl overflow-hidden relative">
-          {/* Canvas blur background */}
-          <canvas
-            ref={canvasRef}
-            width={160}
-            height={40}
-            className="absolute inset-0 w-full h-full object-cover filter blur-[28px] scale-[1.3] opacity-95 pointer-events-none"
-          />
-          {/* Gradient tint: dense left → transparent right */}
-          <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent pointer-events-none" />
-          {/* Content */}
-          <div className="relative z-10 flex items-center gap-2 px-3 py-2">
-            <button onClick={togglePlay} className="shrink-0 text-white hover:text-white/80 transition-colors drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+        <div className="mx-2 mb-2 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.7)]">
+          <div className="flex items-center gap-2 px-3 py-2">
+            <button onClick={togglePlay} className="shrink-0 text-white hover:text-white/80 transition-colors">
               {playing ? <Pause size={16} fill="white" /> : <Play size={16} fill="white" className="ml-0.5" />}
             </button>
 
-            <span className="text-[11px] font-medium text-white tabular-nums shrink-0 select-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+            <span className="text-[11px] font-medium text-white/70 tabular-nums shrink-0 select-none">
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
 
@@ -330,7 +279,7 @@ function GlassPlayer({ src, poster, title, status }) {
               onMouseEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }}
               onMouseLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}
             >
-              <button onClick={toggleMute} className="text-white/70 hover:text-white transition-colors drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+              <button onClick={toggleMute} className="text-white/70 hover:text-white transition-colors">
                 {muted || volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
               </button>
 
@@ -355,7 +304,7 @@ function GlassPlayer({ src, poster, title, status }) {
               )}
             </div>
 
-            <button onClick={toggleFullscreen} className="shrink-0 text-white/70 hover:text-white transition-colors drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
+            <button onClick={toggleFullscreen} className="shrink-0 text-white/70 hover:text-white transition-colors">
               <Maximize size={16} />
             </button>
           </div>
