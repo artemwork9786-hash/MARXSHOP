@@ -222,8 +222,8 @@ function GlassPlayer({ src, poster, title, status }) {
       {/* Title with blur background */}
       {title && (
         <div className="absolute bottom-20 left-3 z-30">
-          <div className="rounded-lg bg-black/50 backdrop-blur-md px-3 py-1.5">
-            <span className="text-lg font-extrabold text-white tracking-wider" style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif" }}>
+          <div className="rounded-lg bg-black/40 backdrop-blur-xl border border-white/10 px-2.5 py-1 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+            <span className="text-sm font-bold text-white tracking-wide" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
               {title}
             </span>
           </div>
@@ -238,7 +238,7 @@ function GlassPlayer({ src, poster, title, status }) {
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-2 mb-2 rounded-2xl bg-black/40 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.7)]">
+        <div className="mx-2 mb-2 rounded-2xl bg-white/10 backdrop-blur-2xl border border-white/15 shadow-[0_8px_32px_rgba(0,0,0,0.5),inset_0_1px_0_rgba(255,255,255,0.1)]">
           <div className="flex items-center gap-2 px-3 py-2">
             <button onClick={togglePlay} className="shrink-0 text-white hover:text-white/80 transition-colors">
               {playing ? <Pause size={16} fill="white" /> : <Play size={16} fill="white" className="ml-0.5" />}
@@ -338,8 +338,8 @@ export default function AccountCard({ account, currency, rates, onRent }) {
             }`}>{account.status}</div>
           </div>
           <div className="absolute bottom-20 left-3 z-30">
-            <div className="rounded-lg bg-black/50 backdrop-blur-md px-3 py-1.5">
-              <span className="text-lg font-extrabold text-white tracking-wider" style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif" }}>
+            <div className="rounded-lg bg-black/40 backdrop-blur-xl border border-white/10 px-2.5 py-1 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+              <span className="text-sm font-bold text-white tracking-wide" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
                 {account.title}
               </span>
             </div>
