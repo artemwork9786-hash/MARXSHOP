@@ -237,7 +237,7 @@ function GlassPlayer({ src, poster, title, status }) {
         </div>
       </div>
 
-      {/* Title with blur background — syncs with controls */}
+      {/* Title with blur background */}
       {title && (
         <div className={`absolute left-3 z-30 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
           showControls ? "bottom-[52px] opacity-100" : "bottom-3 opacity-90"
@@ -250,7 +250,7 @@ function GlassPlayer({ src, poster, title, status }) {
         </div>
       )}
 
-      {/* Volume slider — same height as title */}
+      {/* Volume slider panel — same height as title */}
       <div
         className={`absolute right-3 z-30 transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] ${
           showControls ? "bottom-[52px] opacity-100" : "bottom-3 opacity-90"
@@ -274,7 +274,7 @@ function GlassPlayer({ src, poster, title, status }) {
           >
             <div className="absolute bottom-1 top-1 left-1/2 -translate-x-1/2 w-1 rounded-full bg-white/15 pointer-events-none" />
             <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 rounded-full bg-white pointer-events-none" style={{ height: `${(muted ? 0 : volume) * 100}%` }} />
-            <div className="absolute left-1/2 -translate-x-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none" style={{ bottom: `calc(${(muted ? 0 : volume) * 92}% + 1px - 6px)` }} />
+            <div className="absolute left-1/2 -translate-x-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none" style={{ bottom: `calc(${(muted ? 0 : volume) * 82}% + 1px - 6px)` }} />
           </div>
         </div>
       </div>
