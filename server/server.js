@@ -22,20 +22,17 @@ function ensureDataDir() {
 const DEFAULT_ACCOUNTS = [
   {
     id: "marx-vip-001", title: "MARX VIP #1", price: 23000,
-    status: "В наличии", description: "Полный гардероб скинов, завоеватель, все оружие в легендарных скинах",
-    tags: ["M416 Дракон", "Костюм Мумия", "AWM Космос"],
+    status: "В наличии",
     video_url: "", image_url: "/placeholder.svg",
   },
   {
     id: "marx-vip-002", title: "MARX VIP #2", price: 18500,
-    status: "Занят", description: "Аккаунт с редкими скинами транспорта и оружия",
-    tags: ["AKM Викинг", "УАЗ Тёмный Рыцарь", "Шлем Апокалипсиса"],
+    status: "Занят",
     video_url: "", image_url: "/placeholder.svg",
   },
   {
     id: "marx-vip-003", title: "MARX VIP #3", price: 31000,
-    status: "В наличии", description: "Снайперский аккаунт с лучшими винтовками",
-    tags: ["Kar98k Снеговик", "Костюм Фантом", "M24 Золотой"],
+    status: "В наличии",
     video_url: "", image_url: "/placeholder.svg",
   },
 ];
@@ -148,7 +145,7 @@ app.get("/api/accounts", (_req, res) => {
 });
 
 app.post("/api/accounts", (req, res) => {
-  const { title, price, status, description, tags, video_url, image_url } = req.body;
+  const { title, price, status, video_url, image_url } = req.body;
   if (!title) return res.status(400).json({ error: "title is required" });
 
   const accounts = loadAccounts();
@@ -157,8 +154,6 @@ app.post("/api/accounts", (req, res) => {
     title,
     price: Number(price) || 0,
     status: status || "В наличии",
-    description: description || "",
-    tags: Array.isArray(tags) ? tags : [],
     video_url: video_url || "",
     image_url: image_url || "/placeholder.svg",
   };
@@ -174,14 +169,12 @@ app.put("/api/accounts/:id", (req, res) => {
   const idx = accounts.findIndex((a) => a.id === id);
   if (idx === -1) return res.status(404).json({ error: "Account not found" });
 
-  const { title, price, status, description, tags, video_url, image_url } = req.body;
+  const { title, price, status, video_url, image_url } = req.body;
   accounts[idx] = {
     ...accounts[idx],
     title: title !== undefined ? title : accounts[idx].title,
     price: price !== undefined ? Number(price) : accounts[idx].price,
     status: status !== undefined ? status : accounts[idx].status,
-    description: description !== undefined ? description : accounts[idx].description,
-    tags: tags !== undefined ? (Array.isArray(tags) ? tags : []) : accounts[idx].tags,
     video_url: video_url !== undefined ? video_url : accounts[idx].video_url,
     image_url: image_url !== undefined ? image_url : accounts[idx].image_url,
   };

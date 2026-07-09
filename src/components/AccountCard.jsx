@@ -20,7 +20,7 @@ function formatTime(sec) {
 
 // ─── Glassmorphism Video Player ───────────────────────────────────────────────
 
-function GlassPlayer({ src, poster }) {
+function GlassPlayer({ src, poster, title, status }) {
   const containerRef = useRef(null);
   const videoRef = useRef(null);
   const inputRef = useRef(null);
@@ -119,9 +119,7 @@ function GlassPlayer({ src, poster }) {
     if (!v) return;
     v.volume = 0.5;
 
-    const onTimeUpdate = () => {
-      if (!dragging) setCurrentTime(v.currentTime);
-    };
+    const onTimeUpdate = () => { if (!dragging) setCurrentTime(v.currentTime); };
     const onLoadedMetadata = () => setDuration(v.duration);
     const onEnded = () => { setPlaying(false); setShowControls(true); setIsLoading(false); };
     const onPlay = () => setPlaying(true);
@@ -171,11 +169,12 @@ function GlassPlayer({ src, poster }) {
   }, []);
 
   const inputValue = (currentTime / (duration || 1)) * 1000;
+  const isAvailable = status === "В наличии";
 
   return (
     <div
       ref={containerRef}
-      className="relative w-full aspect-video rounded-t-2xl overflow-hidden bg-[#111] cursor-pointer"
+      className="relative w-full aspect-video overflow-hidden bg-[#111] cursor-pointer"
       onClick={(e) => {
         if (e.target.closest("[data-glass-controls]")) return;
         togglePlay();
@@ -190,9 +189,10 @@ function GlassPlayer({ src, poster }) {
         poster={poster}
         preload="metadata"
         playsInline
-        className="absolute inset-0 w-full h-full object-cover rounded-t-2xl relative z-10"
+        className="absolute inset-0 w-full h-full object-cover"
       />
 
+      {/* Play button */}
       {!playing && !isLoading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 backdrop-blur-md border border-white/20 shadow-xl shadow-black/40">
@@ -201,6 +201,7 @@ function GlassPlayer({ src, poster }) {
         </div>
       )}
 
+      {/* Loading spinner */}
       {isLoading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 backdrop-blur-md border border-white/20 shadow-xl shadow-black/40">
@@ -209,40 +210,46 @@ function GlassPlayer({ src, poster }) {
         </div>
       )}
 
+      {/* Status badge */}
       <div className="absolute top-3 left-3 z-30">
-        <div className="rounded-full bg-white/90 backdrop-blur-sm px-2.5 py-1 text-[10px] font-bold text-black uppercase tracking-wider">
-          Видео
+        <div className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+          isAvailable ? "bg-white text-black" : "bg-neutral-700 text-neutral-400"
+        }`}>
+          {status}
         </div>
       </div>
 
+      {/* Title with blur background */}
+      {title && (
+        <div className="absolute bottom-14 left-3 z-30">
+          <div className="rounded-lg bg-black/40 backdrop-blur-md px-3 py-1.5 border border-white/10">
+            <span className="text-sm font-bold text-white tracking-wide">{title}</span>
+          </div>
+        </div>
+      )}
+
+      {/* Glassmorphism Controls */}
       <div
         data-glass-controls
         className={`absolute bottom-0 left-0 right-0 z-40 transition-all duration-300 ease-out ${
-          showControls
-            ? "translate-y-0 opacity-100"
-            : "translate-y-4 opacity-0 pointer-events-none"
+          showControls ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-2 mb-2 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.7)]">
           <div className="flex items-center gap-2 px-3 py-2">
-            {/* Play/Pause */}
             <button onClick={togglePlay} className="shrink-0 text-white hover:text-white/80 transition-colors">
               {playing ? <Pause size={16} fill="white" /> : <Play size={16} fill="white" className="ml-0.5" />}
             </button>
 
-            {/* Timer */}
             <span className="text-[11px] font-medium text-white/70 tabular-nums shrink-0 select-none">
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
 
-            {/* Progress bar — symmetric gaps on both sides */}
             <div className="flex-1 mx-3 relative flex items-center h-8">
               <div
                 className="absolute left-0 right-0 h-1 rounded-full pointer-events-none"
-                style={{
-                  background: `linear-gradient(to right, #ffffff ${progress}%, rgba(255,255,255,0.15) ${progress}%)`,
-                }}
+                style={{ background: `linear-gradient(to right, #ffffff ${progress}%, rgba(255,255,255,0.15) ${progress}%)` }}
               />
               <div
                 className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none"
@@ -265,7 +272,6 @@ function GlassPlayer({ src, poster }) {
               />
             </div>
 
-            {/* Volume */}
             <div
               className="relative shrink-0"
               onMouseEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }}
@@ -284,40 +290,18 @@ function GlassPlayer({ src, poster }) {
                   <div
                     ref={volumeRef}
                     className="relative h-24 w-8 cursor-pointer touch-none select-none"
-                    onPointerDown={(e) => {
-                      e.preventDefault();
-                      e.stopPropagation();
-                      setVolumeDragging(true);
-                      volumeRef.current?.setPointerCapture(e.pointerId);
-                      setVolumeFromY(e.clientY);
-                    }}
-                    onPointerMove={(e) => {
-                      if (!volumeDragging) return;
-                      e.preventDefault();
-                      setVolumeFromY(e.clientY);
-                    }}
-                    onPointerUp={(e) => {
-                      setVolumeDragging(false);
-                      volumeRef.current?.releasePointerCapture(e.pointerId);
-                    }}
+                    onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setVolumeDragging(true); volumeRef.current?.setPointerCapture(e.pointerId); setVolumeFromY(e.clientY); }}
+                    onPointerMove={(e) => { if (!volumeDragging) return; e.preventDefault(); setVolumeFromY(e.clientY); }}
+                    onPointerUp={(e) => { setVolumeDragging(false); volumeRef.current?.releasePointerCapture(e.pointerId); }}
                   >
-                    {/* Visual track */}
                     <div className="absolute bottom-1 top-1 left-1/2 -translate-x-1/2 w-1 rounded-full bg-white/15 pointer-events-none" />
-                    <div
-                      className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 rounded-full bg-white pointer-events-none"
-                      style={{ height: `${(muted ? 0 : volume) * 100}%` }}
-                    />
-                    {/* Thumb */}
-                    <div
-                      className="absolute left-1/2 -translate-x-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none"
-                      style={{ bottom: `calc(${(muted ? 0 : volume) * 92}% + 1px - 6px)` }}
-                    />
+                    <div className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 rounded-full bg-white pointer-events-none" style={{ height: `${(muted ? 0 : volume) * 100}%` }} />
+                    <div className="absolute left-1/2 -translate-x-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none" style={{ bottom: `calc(${(muted ? 0 : volume) * 92}% + 1px - 6px)` }} />
                   </div>
                 </div>
               )}
             </div>
 
-            {/* Fullscreen */}
             <button onClick={toggleFullscreen} className="shrink-0 text-white/70 hover:text-white transition-colors">
               <Maximize size={16} />
             </button>
@@ -339,58 +323,38 @@ export default function AccountCard({ account, currency, rates, onRent }) {
   const videoSrc = hasVideo ? API_URL + account.video_url : null;
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#1A1A1A] shadow-2xl shadow-black/80 transition-all duration-300 hover:border-white/15 active:border-white/15">
-      {/* Ambient glow from account media */}
-      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
-        {account.image_url && account.image_url !== "/placeholder.svg" ? (
-          <img
-            src={account.image_url}
-            alt=""
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] object-cover opacity-25 blur-[100px] scale-125"
-          />
-        ) : account.video_url ? (
+    <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#1A1A1A] shadow-2xl shadow-black/80">
+      {/* Video Player */}
+      {hasVideo ? (
+        <GlassPlayer src={videoSrc} poster={account.image_url || undefined} title={account.title} status={account.status} />
+      ) : (
+        <div className="relative w-full aspect-video bg-[#111]">
+          <img src={account.image_url || "/placeholder.svg"} alt={account.title} className="absolute inset-0 w-full h-full object-cover" />
+          <div className="absolute top-3 left-3 z-30">
+            <div className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
+              isAvailable ? "bg-white text-black" : "bg-neutral-700 text-neutral-400"
+            }`}>{account.status}</div>
+          </div>
+          <div className="absolute bottom-14 left-3 z-30">
+            <div className="rounded-lg bg-black/40 backdrop-blur-md px-3 py-1.5 border border-white/10">
+              <span className="text-sm font-bold text-white tracking-wide">{account.title}</span>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Price bar with blur background */}
+      <div className="relative bg-[#1A1A1A]">
+        {hasVideo && (
           <video
-            src={`${API_URL}${account.video_url}#t=0.001`}
+            src={`${videoSrc}#t=0.001`}
             muted
             playsInline
             preload="metadata"
-            className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-[110%] h-[110%] object-cover opacity-25 blur-[100px] scale-125"
-          />
-        ) : null}
-      </div>
-
-      <div className="relative z-10">
-        <div className="relative h-48 w-full">
-        {hasVideo ? (
-          <GlassPlayer src={videoSrc} poster={account.image_url || undefined} />
-        ) : (
-          <img
-            src={account.image_url || "/placeholder.svg"}
-            alt={account.title}
-            className="h-full w-full rounded-t-2xl object-cover"
+            className="absolute inset-0 w-full h-full object-cover blur-xl opacity-30 pointer-events-none"
           />
         )}
-
-        <span
-          className={`absolute top-3 left-3 z-30 rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${
-            isAvailable ? "bg-white text-black" : "bg-neutral-700 text-neutral-400"
-          }`}
-        >
-          {account.status}
-        </span>
-      </div>
-
-      <div className="p-4">
-        <h3 className="text-lg font-bold text-white tracking-wide">{account.title}</h3>
-        {account.description && (
-          <p className="mt-1 text-xs text-neutral-500 line-clamp-2">{account.description}</p>
-        )}
-        <div className="mt-2 flex flex-wrap gap-1.5">
-          {account.tags.map((tag) => (
-            <span key={tag} className="rounded-lg bg-neutral-800 px-2.5 py-1 text-xs font-medium text-neutral-300">{tag}</span>
-          ))}
-        </div>
-        <div className="mt-4 flex items-center justify-between">
+        <div className="relative z-10 flex items-center justify-between px-4 py-3">
           <span className="text-xl font-bold text-white">
             {formattedPrice}<span className="ml-1 text-sm text-neutral-500">{curr.symbol}</span>
           </span>
@@ -404,7 +368,6 @@ export default function AccountCard({ account, currency, rates, onRent }) {
             Арендовать
           </button>
         </div>
-      </div>
       </div>
     </div>
   );

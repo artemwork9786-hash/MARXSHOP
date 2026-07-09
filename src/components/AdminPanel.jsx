@@ -10,8 +10,8 @@ const INPUT =
 
 function AddScreen({ onDone }) {
   const [form, setForm] = useState({
-    title: "", price: "", status: "В наличии", description: "",
-    image_url: "", tags: "", video_url: "",
+    title: "", price: "", status: "В наличии",
+    image_url: "", video_url: "",
   });
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -43,9 +43,7 @@ function AddScreen({ onDone }) {
         title: form.title.trim(),
         price: Number(form.price) || 0,
         status: form.status,
-        description: form.description.trim(),
         image_url: form.image_url.trim() || "/placeholder.svg",
-        tags: form.tags.split(",").map((s) => s.trim()).filter(Boolean),
         video_url: form.video_url,
       });
       setToast("Аккаунт добавлен!");
@@ -67,12 +65,10 @@ function AddScreen({ onDone }) {
           <option value="В наличии">В наличии</option>
           <option value="Занят">Занят</option>
         </select>
-        <textarea className={INPUT + " resize-none"} rows={3} placeholder="Описание инвентаря" value={form.description} onChange={set("description")} />
         <div>
           <input className={INPUT} placeholder="Ссылка на превью-картинку (необязательно)" value={form.image_url} onChange={set("image_url")} />
           <p className="mt-1 text-[10px] text-neutral-600">Если оставить пустым, будет автоматически взят первый кадр из видео</p>
         </div>
-        <input className={INPUT} placeholder="Топ-скины (через запятую)" value={form.tags} onChange={set("tags")} />
         <label className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 bg-[#0A0A0A] px-4 py-3 text-sm text-neutral-500 cursor-pointer hover:border-white/40 transition-colors">
           <input type="file" accept="video/mp4" className="hidden" onChange={handleVideoUpload} disabled={uploading} />
           {uploading ? "Видео загружается..." : form.video_url ? "Видео загружено ✓" : "Загрузить видео (.mp4)"}
@@ -146,7 +142,7 @@ function ListScreen({ onEdit, onAdd, onAccountsChanged }) {
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-white truncate">{a.title}</p>
                 <p className="text-[10px] text-neutral-500 truncate">
-                  [{a.status.toUpperCase()}] {a.tags.join(", ")} · {a.price.toLocaleString("ru-RU")} ₽
+                  [{a.status.toUpperCase()}] {a.price.toLocaleString("ru-RU")} ₽
                 </p>
               </div>
               <button onClick={() => onEdit(a)} className="p-2 rounded-lg hover:bg-white/10 text-neutral-400 hover:text-white shrink-0">
@@ -190,9 +186,7 @@ function EditScreen({ account, onBack }) {
     title: account.title,
     price: String(account.price),
     status: account.status,
-    description: account.description,
     image_url: account.image_url,
-    tags: account.tags.join(", "),
     video_url: account.video_url || "",
   });
   const [loading, setLoading] = useState(false);
@@ -224,9 +218,7 @@ function EditScreen({ account, onBack }) {
         title: form.title.trim(),
         price: Number(form.price) || 0,
         status: form.status,
-        description: form.description.trim(),
         image_url: form.image_url.trim() || "/placeholder.svg",
-        tags: form.tags.split(",").map((s) => s.trim()).filter(Boolean),
         video_url: form.video_url,
       });
       setToast("Сохранено!");
@@ -251,12 +243,10 @@ function EditScreen({ account, onBack }) {
           <option value="В наличии">В наличии</option>
           <option value="Занят">Занят</option>
         </select>
-        <textarea className={INPUT + " resize-none"} rows={3} placeholder="Описание" value={form.description} onChange={set("description")} />
         <div>
           <input className={INPUT} placeholder="Ссылка на превью-картинку (необязательно)" value={form.image_url} onChange={set("image_url")} />
           <p className="mt-1 text-[10px] text-neutral-600">Если оставить пустым, будет автоматически взят первый кадр из видео</p>
         </div>
-        <input className={INPUT} placeholder="Теги через запятую" value={form.tags} onChange={set("tags")} />
         <label className="flex w-full items-center justify-center gap-2 rounded-xl border border-dashed border-white/20 bg-[#0A0A0A] px-4 py-3 text-sm text-neutral-500 cursor-pointer hover:border-white/40 transition-colors">
           <input type="file" accept="video/mp4" className="hidden" onChange={handleVideoUpload} disabled={uploading} />
           {uploading ? "Видео загружается..." : form.video_url ? "Видео загружено ✓" : "Загрузить видео (.mp4)"}
