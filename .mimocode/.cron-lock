@@ -1,1 +1,6 @@
-{"pid":1232,"startedAt":1783503063129}
+{
+  "pid": 1232,
+  "startedAt": 1783503063129,
+  "autoApprove": true,
+  "safeMode": false
+}
