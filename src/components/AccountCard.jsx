@@ -141,25 +141,9 @@ function GlassPlayer({ src, poster }) {
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-2 mb-2 rounded-2xl border border-white/20 bg-white/10 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
-          {/* Progress bar */}
-          <div
-            ref={progressRef}
-            className="relative mx-4 mt-3 h-1 w-[calc(100%-2rem)] cursor-pointer rounded-full bg-white/20 group/track"
-            onClick={seek}
-          >
-            <div
-              className="absolute top-0 left-0 h-full rounded-full bg-white transition-[width] duration-100"
-              style={{ width: `${progress}%` }}
-            />
-            <div
-              className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)] opacity-0 group-hover/track:opacity-100 transition-opacity duration-200"
-              style={{ left: `calc(${progress}% - 6px)` }}
-            />
-          </div>
-
-          {/* Buttons row */}
-          <div className="flex items-center gap-3 px-4 py-2">
+        <div className="mx-2 mb-2 rounded-2xl border border-white/10 bg-[#121212]/50 backdrop-blur-lg shadow-[0_8px_32px_rgba(0,0,0,0.7)]">
+          <div className="flex items-center gap-3 px-3 py-2">
+            {/* Play/Pause */}
             <button
               onClick={togglePlay}
               className="shrink-0 text-white hover:text-white/80 transition-colors"
@@ -170,13 +154,32 @@ function GlassPlayer({ src, poster }) {
                 <Play size={16} fill="white" className="ml-0.5" />
               )}
             </button>
-            <span className="text-[11px] font-medium text-white/80 tabular-nums shrink-0 select-none">
+
+            {/* Timer */}
+            <span className="text-[11px] font-medium text-white/70 tabular-nums shrink-0 select-none">
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
-            <div className="flex-1" />
+
+            {/* Progress bar */}
+            <div
+              ref={progressRef}
+              className="relative flex-1 h-1 cursor-pointer rounded-full bg-white/15 group/track"
+              onClick={seek}
+            >
+              <div
+                className="absolute top-0 left-0 h-full rounded-full bg-white transition-[width] duration-100"
+                style={{ width: `${progress}%` }}
+              />
+              <div
+                className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] opacity-0 group-hover/track:opacity-100 transition-opacity duration-200"
+                style={{ left: `calc(${progress}% - 6px)` }}
+              />
+            </div>
+
+            {/* Fullscreen */}
             <button
               onClick={toggleFullscreen}
-              className="shrink-0 text-white/80 hover:text-white transition-colors"
+              className="shrink-0 text-white/70 hover:text-white transition-colors"
             >
               <Maximize size={16} />
             </button>
