@@ -184,13 +184,22 @@ function GlassPlayer({ src, poster }) {
       onMouseMove={resetHideTimer}
       onTouchStart={resetHideTimer}
     >
+      {/* Background blur video layer */}
+      <video
+        src={src}
+        preload="metadata"
+        playsInline
+        muted
+        className="absolute inset-0 w-full h-full object-cover blur-xl opacity-50 scale-105 pointer-events-none"
+      />
+      {/* Main video layer */}
       <video
         ref={videoRef}
         src={src}
         poster={poster}
         preload="metadata"
         playsInline
-        className="absolute inset-0 h-full w-full object-cover"
+        className="absolute inset-0 h-full w-full object-contain relative z-10"
       />
 
       {!playing && !isLoading && (
