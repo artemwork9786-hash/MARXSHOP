@@ -42,7 +42,7 @@ function GlassPlayer({ src, poster }) {
   const seek = useCallback((e) => {
     const bar = progressRef.current;
     const v = videoRef.current;
-    if (!bar || !v) return;
+    if (!bar || !v || !v.duration) return;
     const rect = bar.getBoundingClientRect();
     const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
     v.currentTime = pct * v.duration;
@@ -88,72 +88,96 @@ function GlassPlayer({ src, poster }) {
     }, 3000);
   }, []);
 
+  useEffect(() => {
+    resetHideTimer();
+    return () => clearTimeout(hideTimer.current);
+  }, []);
+
   return (
     <div
       ref={containerRef}
-      className="relative h-48 w-full rounded-t-2xl overflow-hidden bg-black cursor-pointer group"
+      className="relative h-48 w-full rounded-t-2xl overflow-hidden bg-black cursor-pointer"
       onClick={(e) => {
-        if (e.target.closest(".glass-controls")) return;
+        if (e.target.closest("[data-glass-controls]")) return;
         togglePlay();
         resetHideTimer();
       }}
       onMouseMove={resetHideTimer}
       onTouchStart={resetHideTimer}
     >
-      {/* Video */}
+      {/* Video element */}
       <video
         ref={videoRef}
         src={src}
         poster={poster}
         preload="metadata"
         playsInline
-        className="h-full w-full object-cover"
+        className="absolute inset-0 h-full w-full object-cover"
       />
 
-      {/* Play/Pause center overlay */}
+      {/* Center play button (shown when paused) */}
       {!playing && (
-        <div className="absolute inset-0 flex items-center justify-center z-10">
-          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/40 backdrop-blur-md border border-white/10 shadow-lg shadow-black/30 transition-transform active:scale-90">
+        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 backdrop-blur-md border border-white/20 shadow-xl shadow-black/40">
             <Play size={24} className="text-white ml-1" fill="white" />
           </div>
         </div>
       )}
 
+      {/* Status badge */}
+      <div className="absolute top-3 left-3 z-30">
+        <div className="rounded-full bg-white/90 backdrop-blur-sm px-2.5 py-1 text-[10px] font-bold text-black uppercase tracking-wider">
+          Видео
+        </div>
+      </div>
+
       {/* Glassmorphism Control Bar */}
       <div
-        className={`glass-controls absolute bottom-0 left-0 right-0 z-20 transition-all duration-300 ${
-          showControls ? "translate-y-0 opacity-100" : "translate-y-2 opacity-0 pointer-events-none"
+        data-glass-controls
+        className={`absolute bottom-0 left-0 right-0 z-40 transition-all duration-300 ease-out ${
+          showControls
+            ? "translate-y-0 opacity-100"
+            : "translate-y-4 opacity-0 pointer-events-none"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-3 mb-3 rounded-2xl border border-white/15 bg-black/30 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.5)]">
+        <div className="mx-2 mb-2 rounded-2xl border border-white/20 bg-white/10 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.6)]">
           {/* Progress bar */}
           <div
             ref={progressRef}
-            className="relative h-1 w-full cursor-pointer group/bar"
+            className="relative mx-4 mt-3 h-1 w-[calc(100%-2rem)] cursor-pointer rounded-full bg-white/20 group/track"
             onClick={seek}
           >
-            <div className="absolute inset-0 bg-white/10 rounded-full" />
             <div
-              className="absolute top-0 left-0 h-full bg-white rounded-full transition-[width] duration-100"
+              className="absolute top-0 left-0 h-full rounded-full bg-white transition-[width] duration-100"
               style={{ width: `${progress}%` }}
             />
             <div
-              className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-white shadow-md opacity-0 group-hover/bar:opacity-100 transition-opacity"
+              className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_8px_rgba(255,255,255,0.5)] opacity-0 group-hover/track:opacity-100 transition-opacity duration-200"
               style={{ left: `calc(${progress}% - 6px)` }}
             />
           </div>
 
           {/* Buttons row */}
-          <div className="flex items-center gap-3 px-4 py-2.5">
-            <button onClick={togglePlay} className="shrink-0 text-white hover:text-white/80 transition-colors">
-              {playing ? <Pause size={16} fill="white" /> : <Play size={16} fill="white" className="ml-0.5" />}
+          <div className="flex items-center gap-3 px-4 py-2">
+            <button
+              onClick={togglePlay}
+              className="shrink-0 text-white hover:text-white/80 transition-colors"
+            >
+              {playing ? (
+                <Pause size={16} fill="white" />
+              ) : (
+                <Play size={16} fill="white" className="ml-0.5" />
+              )}
             </button>
-            <span className="text-[11px] font-medium text-white/70 tabular-nums shrink-0">
+            <span className="text-[11px] font-medium text-white/80 tabular-nums shrink-0 select-none">
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
             <div className="flex-1" />
-            <button onClick={toggleFullscreen} className="shrink-0 text-white/70 hover:text-white transition-colors">
+            <button
+              onClick={toggleFullscreen}
+              className="shrink-0 text-white/80 hover:text-white transition-colors"
+            >
               <Maximize size={16} />
             </button>
           </div>
