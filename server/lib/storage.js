@@ -1,17 +1,34 @@
 const crypto = require("crypto");
+const fs = require("fs");
+const path = require("path");
 
-// In-memory order storage
-const orders = new Map();
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "..", "data");
+const ORDERS_FILE = path.join(DATA_DIR, "orders.json");
+
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+function loadOrders() {
+  ensureDataDir();
+  try {
+    if (!fs.existsSync(ORDERS_FILE)) return [];
+    return JSON.parse(fs.readFileSync(ORDERS_FILE, "utf-8"));
+  } catch {
+    return [];
+  }
+}
+
+function saveOrders(orders) {
+  ensureDataDir();
+  fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders, null, 2), "utf-8");
+}
 
 // Active account reservation timers: accountId -> timeoutId
 const reservationTimers = new Map();
 
-/**
- * Create a new order
- * @param {{ accountId, currency, method, userId? }} params
- * @returns {object} created order
- */
 function createOrder({ accountId, currency, method, userId = null }) {
+  const orders = loadOrders();
   const id = crypto.randomUUID();
   const now = Date.now();
   const order = {
@@ -19,7 +36,7 @@ function createOrder({ accountId, currency, method, userId = null }) {
     accountId,
     userId,
     currency,
-    method, // "crypto" | "sbp"
+    method,
     status: "PENDING",
     payUrl: null,
     paymentDetails: null,
@@ -28,38 +45,37 @@ function createOrder({ accountId, currency, method, userId = null }) {
     createdAt: now,
     expiresAt: now + 10 * 60 * 1000,
   };
-  orders.set(id, order);
+  orders.push(order);
+  saveOrders(orders);
   return order;
 }
 
 function getOrder(orderId) {
-  return orders.get(orderId) || null;
+  const orders = loadOrders();
+  return orders.find((o) => o.id === orderId) || null;
 }
 
 function getOrdersByAccountId(accountId) {
-  const result = [];
-  for (const order of orders.values()) {
-    if (order.accountId === accountId) result.push(order);
-  }
-  return result;
+  return loadOrders().filter((o) => o.accountId === accountId);
 }
 
 function getOrderByInvoiceId(invoiceId) {
-  for (const order of orders.values()) {
-    if (order.invoiceId === invoiceId) return order;
-  }
-  return null;
+  return loadOrders().find((o) => o.invoiceId === invoiceId) || null;
 }
 
 function updateOrder(orderId, updates) {
-  const order = orders.get(orderId);
-  if (!order) return null;
-  Object.assign(order, updates);
-  return order;
+  const orders = loadOrders();
+  const idx = orders.findIndex((o) => o.id === orderId);
+  if (idx === -1) return null;
+  Object.assign(orders[idx], updates);
+  saveOrders(orders);
+  return orders[idx];
 }
 
 function deleteOrder(orderId) {
-  orders.delete(orderId);
+  const orders = loadOrders();
+  const filtered = orders.filter((o) => o.id !== orderId);
+  saveOrders(filtered);
 }
 
 // Account reservation helpers
@@ -68,7 +84,6 @@ function reserveAccount(accountId, accounts) {
   if (!account || account.status !== "В наличии") return false;
   account.status = "Занят";
 
-  // Clear existing timer if any
   if (reservationTimers.has(accountId)) {
     clearTimeout(reservationTimers.get(accountId));
   }
@@ -76,12 +91,13 @@ function reserveAccount(accountId, accounts) {
   const timer = setTimeout(() => {
     account.status = "В наличии";
     reservationTimers.delete(accountId);
-    // Also expire all pending orders for this account
-    for (const order of orders.values()) {
+    const orders = loadOrders();
+    for (const order of orders) {
       if (order.accountId === accountId && order.status === "PENDING") {
         order.status = "EXPIRED";
       }
     }
+    saveOrders(orders);
     console.log(`[TIMER] Reservation for ${accountId} expired`);
   }, 10 * 60 * 1000);
 

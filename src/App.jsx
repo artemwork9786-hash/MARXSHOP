@@ -49,14 +49,23 @@ function App() {
   activeOrderRef.current = activeOrder;
 
   // Load accounts and rates from API
-  useEffect(() => {
+  const refreshAccounts = useCallback(() => {
     getAccounts()
       .then((res) => setAccounts(res.accounts))
       .catch(() => {});
+  }, []);
+
+  useEffect(() => {
+    refreshAccounts();
     getRates()
       .then((res) => setRates(res))
       .catch(() => {});
-  }, []);
+  }, [refreshAccounts]);
+
+  // Re-fetch accounts when switching to shop tab
+  useEffect(() => {
+    if (activeTab === "shop") refreshAccounts();
+  }, [activeTab, refreshAccounts]);
 
   // Telegram init
   useEffect(() => {
@@ -281,6 +290,7 @@ function App() {
             onSelectMethod={handleSelectMethod}
             onVerifyInvoice={handleVerifyInvoice}
             onClearOrder={handleClearOrder}
+            onAccountsChanged={refreshAccounts}
           />
         )}
         {activeTab === "info" && <InfoTab />}

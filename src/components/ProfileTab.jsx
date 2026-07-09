@@ -300,7 +300,7 @@ function PaidView({ activeOrder, currency, credentials }) {
 
 // ─── Empty Profile ───────────────────────────────────────────────────────────
 
-function EmptyProfile() {
+function EmptyProfile({ onAccountsChanged }) {
   const user = getTgUser();
   const hasUser = !!user;
   const isAdmin = checkIsAdmin(user);
@@ -311,7 +311,7 @@ function EmptyProfile() {
   if (isAdmin) {
     return (
       <div className="px-4 pt-6 pb-6">
-        <AdminPanel />
+        <AdminPanel onAccountsChanged={onAccountsChanged} />
       </div>
     );
   }
@@ -478,10 +478,11 @@ export default function ProfileTab({
   onSelectMethod,
   onVerifyInvoice,
   onClearOrder,
+  onAccountsChanged,
 }) {
   // No active order — show empty profile
   if (!activeOrder) {
-    return <EmptyProfile />;
+    return <EmptyProfile onAccountsChanged={onAccountsChanged} />;
   }
 
   // Payment method not yet chosen — show selector

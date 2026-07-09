@@ -1,0 +1,92 @@
+[
+  {
+    "id": "marx-vip-001",
+    "title": "MARX VIP #1",
+    "price": 23000,
+    "status": "В наличии",
+    "description": "Полный гардероб скинов, завоеватель, все оружие в легендарных скинах",
+    "tags": ["M416 Дракон", "Костюм Мумия", "AWM Космос"],
+    "video_url": "",
+    "image_url": "/placeholder.svg"
+  },
+  {
+    "id": "marx-vip-002",
+    "title": "MARX VIP #2",
+    "price": 18500,
+    "status": "Занят",
+    "description": "Аккаунт с редкими скинами транспорта и оружия",
+    "tags": ["AKM Викинг", "УАЗ Тёмный Рыцарь", "Шлем Апокалипсиса"],
+    "video_url": "",
+    "image_url": "/placeholder.svg"
+  },
+  {
+    "id": "marx-vip-003",
+    "title": "MARX VIP #3",
+    "price": 31000,
+    "status": "В наличии",
+    "description": "Снайперский аккаунт с лучшими винтовками",
+    "tags": ["Kar98k Снеговик", "Костюм Фантом", "M24 Золотой"],
+    "video_url": "",
+    "image_url": "/placeholder.svg"
+  },
+  {
+    "id": "marx-vip-004",
+    "title": "MARX VIP #4",
+    "price": 15000,
+    "status": "В наличии",
+    "description": "Аккаунт для любителей автоматов и пистолетов",
+    "tags": ["M416 Ледяной", "UMP45 Страж", "Джип Ниндзя"],
+    "video_url": "",
+    "image_url": "/placeholder.svg"
+  },
+  {
+    "id": "marx-vip-005",
+    "title": "MARX VIP #5",
+    "price": 42000,
+    "status": "Занят",
+    "description": "Премиум аккаунт с эксклюзивными костюмами",
+    "tags": ["SCAR-L Пламя", "Костюм Дракон", "Дробовик Берсерк"],
+    "video_url": "",
+    "image_url": "/placeholder.svg"
+  },
+  {
+    "id": "marx-vip-006",
+    "title": "MARX VIP #6",
+    "price": 12000,
+    "status": "В наличии",
+    "description": "Бюджетный аккаунт с хорошим набором скинов",
+    "tags": ["DP-28 Стальной", "Мотоцикл Ретро", "Очки Будущего"],
+    "video_url": "",
+    "image_url": "/placeholder.svg"
+  },
+  {
+    "id": "marx-vip-007",
+    "title": "MARX VIP #7",
+    "price": 55000,
+    "status": "В наличии",
+    "description": "Топовый аккаунт с X-Suit и полным гардеробом",
+    "tags": ["AWM Фантом", "Костюм Тень", "Мотоцикл Гроза"],
+    "video_url": "",
+    "image_url": "/placeholder.svg"
+  },
+  {
+    "id": "marx-vip-008",
+    "title": "MARX VIP #8",
+    "price": 19500,
+    "status": "В наличии",
+    "description": "Сбалансированный аккаунт для рейтинговых игр",
+    "tags": ["M16A4 Охотник", "UMP45 Механик", "Суперкары"],
+    "video_url": "",
+    "image_url": "/placeholder.svg"
+  },
+  {
+    "id": "marx-vip-009",
+    "title": "MARX LEGEND #1",
+    "price": 250000,
+    "status": "В наличии",
+    "description": "Легендарный аккаунт. Завоеватель. Фулл гардероб. X-Suit. Гарантия от восстановления.",
+    "tags": ["Золотой костюм", "Фулл гардероб", "X-Suit", "AWM Легенда", "M416 Ледяной Кристалл", "Костюм Тёмного Рыцаря"],
+    "video_url": "",
+    "image_url": "/placeholder.svg"
+  }
+]

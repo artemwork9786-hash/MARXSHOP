@@ -2,34 +2,78 @@ require("dotenv").config();
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
+const fs = require("fs");
 const multer = require("multer");
 const storage = require("./lib/storage");
 const cryptoPay = require("./lib/crypto-pay");
 
 const app = express();
 const PORT = process.env.PORT || 5000;
-const FRONTEND_URL = process.env.FRONTEND_URL || "https://artemwork9786-hash.github.io/MARXSHOP";
 
-// Static files — uploaded videos
-app.use("/uploads", express.static(path.join(__dirname, "public/uploads")));
+// ─── JSON file-based storage for accounts ────────────────────────────────────
 
-// Multer config
+const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "data");
+const PRODUCTS_FILE = path.join(DATA_DIR, "products.json");
+
+function ensureDataDir() {
+  if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
+}
+
+function loadAccounts() {
+  ensureDataDir();
+  try {
+    if (!fs.existsSync(PRODUCTS_FILE)) {
+      console.log(`[DATA] products.json not found at ${PRODUCTS_FILE}, creating empty`);
+      fs.writeFileSync(PRODUCTS_FILE, "[]", "utf-8");
+      return [];
+    }
+    const raw = fs.readFileSync(PRODUCTS_FILE, "utf-8");
+    const accounts = JSON.parse(raw);
+    console.log(`[DATA] Loaded ${accounts.length} accounts from ${PRODUCTS_FILE}`);
+    return accounts;
+  } catch (e) {
+    console.error(`[DATA] Error loading ${PRODUCTS_FILE}:`, e.message);
+    return [];
+  }
+}
+
+function saveAccounts(accounts) {
+  ensureDataDir();
+  fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(accounts, null, 2), "utf-8");
+}
+
+// ─── Static files — uploaded videos ──────────────────────────────────────────
+
+const UPLOADS_DIR = process.env.UPLOADS_DIR || path.join(__dirname, "public", "uploads", "videos");
+function ensureUploadsDir() {
+  if (!fs.existsSync(UPLOADS_DIR)) fs.mkdirSync(UPLOADS_DIR, { recursive: true });
+}
+ensureUploadsDir();
+
+app.use("/uploads", express.static(path.join(__dirname, "public", "uploads")));
+
+// ─── Multer config ───────────────────────────────────────────────────────────
+
 const upload = multer({
   storage: multer.diskStorage({
-    destination: path.join(__dirname, "public/uploads/videos"),
-    filename: (req, file, cb) => {
+    destination: (_req, _file, cb) => {
+      ensureUploadsDir();
+      cb(null, UPLOADS_DIR);
+    },
+    filename: (_req, file, cb) => {
       const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
       cb(null, unique + ".mp4");
     },
   }),
-  fileFilter: (req, file, cb) => {
+  fileFilter: (_req, file, cb) => {
     if (file.mimetype === "video/mp4") cb(null, true);
     else cb(new Error("Only .mp4 files allowed"), false);
   },
   limits: { fileSize: 500 * 1024 * 1024 },
 });
 
-// Fixed exchange rates for SBP conversion (MVP)
+// ─── Helpers ─────────────────────────────────────────────────────────────────
+
 const EXCHANGE_RATES = { USD: 90, UAH: 2.4 };
 
 function toRub(amount, fromCurrency) {
@@ -39,7 +83,8 @@ function toRub(amount, fromCurrency) {
   return Math.round(amount * rate);
 }
 
-// CORS
+// ─── CORS ────────────────────────────────────────────────────────────────────
+
 const allowedOrigins = [
   "http://localhost:5173",
   "http://localhost:3000",
@@ -53,92 +98,37 @@ app.use(
       if (!origin || allowedOrigins.some((o) => origin.startsWith(o))) {
         cb(null, true);
       } else {
-        cb(null, true); // MVP
+        cb(null, true);
       }
     },
     credentials: true,
   })
 );
+app.use((req, res, next) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+  res.set("Surrogate-Control", "no-store");
+  next();
+});
 app.use(express.json());
 
-// ─── Accounts Data (new model) ────────────────────────────────────────────────
+// ─── Accounts CRUD (JSON file-backed) ────────────────────────────────────────
 
-let accounts = [
-  {
-    id: "marx-vip-001", title: "MARX VIP #1", price: 23000,
-    status: "В наличии", description: "Полный гардероб скинов, завоеватель, все оружие в легендарных скинах",
-    tags: ["M416 Дракон", "Костюм Мумия", "AWM Космос"],
-    video_url: "", image_url: "/placeholder.svg",
-  },
-  {
-    id: "marx-vip-002", title: "MARX VIP #2", price: 18500,
-    status: "Занят", description: "Аккаунт с редкими скинами транспорта и оружия",
-    tags: ["AKM Викинг", "УАЗ Тёмный Рыцарь", "Шлем Апокалипсиса"],
-    video_url: "", image_url: "/placeholder.svg",
-  },
-  {
-    id: "marx-vip-003", title: "MARX VIP #3", price: 31000,
-    status: "В наличии", description: "Снайперский аккаунт с лучшими винтовками",
-    tags: ["Kar98k Снеговик", "Костюм Фантом", "M24 Золотой"],
-    video_url: "", image_url: "/placeholder.svg",
-  },
-  {
-    id: "marx-vip-004", title: "MARX VIP #4", price: 15000,
-    status: "В наличии", description: "Аккаунт для любителей автоматов и пистолетов",
-    tags: ["M416 Ледяной", "UMP45 Страж", "Джип Ниндзя"],
-    video_url: "", image_url: "/placeholder.svg",
-  },
-  {
-    id: "marx-vip-005", title: "MARX VIP #5", price: 42000,
-    status: "Занят", description: "Премиум аккаунт с эксклюзивными костюмами",
-    tags: ["SCAR-L Пламя", "Костюм Дракон", "Дробовик Берсерк"],
-    video_url: "", image_url: "/placeholder.svg",
-  },
-  {
-    id: "marx-vip-006", title: "MARX VIP #6", price: 12000,
-    status: "В наличии", description: "Бюджетный аккаунт с хорошим набором скинов",
-    tags: ["DP-28 Стальной", "Мотоцикл Ретро", "Очки Будущего"],
-    video_url: "", image_url: "/placeholder.svg",
-  },
-  {
-    id: "marx-vip-007", title: "MARX VIP #7", price: 55000,
-    status: "В наличии", description: "Топовый аккаунт с X-Suit и полным гардеробом",
-    tags: ["AWM Фантом", "Костюм Тень", "Мотоцикл Гроза"],
-    video_url: "", image_url: "/placeholder.svg",
-  },
-  {
-    id: "marx-vip-008", title: "MARX VIP #8", price: 19500,
-    status: "В наличии", description: "Сбалансированный аккаунт для рейтинговых игр",
-    tags: ["M16A4 Охотник", "UMP45 Механик", "Суперкары"],
-    video_url: "", image_url: "/placeholder.svg",
-  },
-  {
-    id: "marx-vip-009", title: "MARX LEGEND #1", price: 250000,
-    status: "В наличии", description: "Легендарный аккаунт. Завоеватель. Фулл гардероб. X-Suit. Гарантия от восстановления.",
-    tags: ["Золотой костюм", "Фулл гардероб", "X-Suit", "AWM Легенда", "M416 Ледяной Кристалл", "Костюм Тёмного Рыцаря"],
-    video_url: "", image_url: "/placeholder.svg",
-  },
-];
-
-// ─── Helpers ──────────────────────────────────────────────────────────────────
-
-function validateTgInitData(initData) {
-  if (!initData || typeof initData !== "string") return false;
-  return initData.length > 0;
-}
-
-// ─── Routes ───────────────────────────────────────────────────────────────────
-
-// GET /api/accounts
 app.get("/api/accounts", (_req, res) => {
+  res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
+  res.set("Pragma", "no-cache");
+  res.set("Expires", "0");
+  res.set("Surrogate-Control", "no-store");
+  const accounts = loadAccounts();
   res.json({ accounts });
 });
 
-// POST /api/accounts — add a new account (admin)
 app.post("/api/accounts", (req, res) => {
   const { title, price, status, description, tags, video_url, image_url } = req.body;
   if (!title) return res.status(400).json({ error: "title is required" });
 
+  const accounts = loadAccounts();
   const newAccount = {
     id: `marx-vip-${Date.now()}`,
     title,
@@ -150,24 +140,14 @@ app.post("/api/accounts", (req, res) => {
     image_url: image_url || "/placeholder.svg",
   };
   accounts.push(newAccount);
+  saveAccounts(accounts);
   console.log(`[ADMIN] Account added: ${newAccount.title}`);
   res.status(201).json({ success: true, account: newAccount });
 });
 
-// POST /api/upload-video — upload video file
-app.post("/api/upload-video", (req, res) => {
-  upload.single("video")(req, res, (err) => {
-    if (err) return res.status(400).json({ error: err.message });
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-    const videoUrl = "/uploads/videos/" + req.file.filename;
-    console.log(`[UPLOAD] Video: ${videoUrl}`);
-    res.json({ video_url: videoUrl });
-  });
-});
-
-// PUT /api/accounts/:id — update account (admin)
 app.put("/api/accounts/:id", (req, res) => {
   const { id } = req.params;
+  const accounts = loadAccounts();
   const idx = accounts.findIndex((a) => a.id === id);
   if (idx === -1) return res.status(404).json({ error: "Account not found" });
 
@@ -182,22 +162,37 @@ app.put("/api/accounts/:id", (req, res) => {
     video_url: video_url !== undefined ? video_url : accounts[idx].video_url,
     image_url: image_url !== undefined ? image_url : accounts[idx].image_url,
   };
+  saveAccounts(accounts);
   console.log(`[ADMIN] Account updated: ${id}`);
   res.json({ success: true, account: accounts[idx] });
 });
 
-// DELETE /api/accounts/:id — delete account (admin)
 app.delete("/api/accounts/:id", (req, res) => {
   const { id } = req.params;
+  const accounts = loadAccounts();
   const idx = accounts.findIndex((a) => a.id === id);
   if (idx === -1) return res.status(404).json({ error: "Account not found" });
 
   accounts.splice(idx, 1);
+  saveAccounts(accounts);
   console.log(`[ADMIN] Account deleted: ${id}`);
   res.json({ success: true, id });
 });
 
-// POST /api/create-order — create a rental order (crypto or SBP)
+// ─── Video upload ────────────────────────────────────────────────────────────
+
+app.post("/api/upload-video", (req, res) => {
+  upload.single("video")(req, res, (err) => {
+    if (err) return res.status(400).json({ error: err.message });
+    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
+    const videoUrl = "/uploads/videos/" + req.file.filename;
+    console.log(`[UPLOAD] Video: ${videoUrl}`);
+    res.json({ video_url: videoUrl });
+  });
+});
+
+// ─── Orders / Payments ───────────────────────────────────────────────────────
+
 app.post("/api/create-order", async (req, res) => {
   try {
     const { accountId, currency, method, tgInitData } = req.body;
@@ -210,21 +205,21 @@ app.post("/api/create-order", async (req, res) => {
       return res.status(400).json({ error: "currency must be RUB, UAH, or USD" });
     }
 
+    const accounts = loadAccounts();
     const account = accounts.find((a) => a.id === accountId);
     if (!account) return res.status(404).json({ error: "Account not found" });
     if (account.status !== "В наличии") return res.status(409).json({ error: "Account is not available" });
 
-    // Reserve account
     storage.reserveAccount(accountId, accounts);
+    saveAccounts(accounts);
 
     const price = account.price;
     const order = storage.createOrder({ accountId, currency, method });
 
     if (method === "crypto") {
-      // Manual invoice flow — user creates invoice in @CryptoBot
       const instructions = cryptoPay.getPayInstructions(order.id, price, currency);
       storage.updateOrder(order.id, { amount: price });
-      console.log(`[ORDER] Crypto order created: ${order.id} for ${accountId} — manual flow`);
+      console.log(`[ORDER] Crypto order created: ${order.id} for ${accountId}`);
 
       return res.json({
         success: true,
@@ -238,7 +233,6 @@ app.post("/api/create-order", async (req, res) => {
       });
     }
 
-    // SBP method
     const amountRub = toRub(price, currency);
     const shortId = order.id.slice(-8).toUpperCase();
     const comment = `MARX-${shortId}`;
@@ -277,7 +271,6 @@ app.post("/api/create-order", async (req, res) => {
   }
 });
 
-// GET /api/check-order — check order status
 app.get("/api/check-order", (req, res) => {
   const { orderId } = req.query;
   if (!orderId) return res.status(400).json({ error: "orderId is required" });
@@ -285,10 +278,11 @@ app.get("/api/check-order", (req, res) => {
   const order = storage.getOrder(orderId);
   if (!order) return res.status(404).json({ error: "Order not found" });
 
-  // Check expiration
   if (order.status === "PENDING" && Date.now() > order.expiresAt) {
     storage.updateOrder(orderId, { status: "EXPIRED" });
+    const accounts = loadAccounts();
     storage.releaseAccount(order.accountId, accounts);
+    saveAccounts(accounts);
     return res.json({ orderId, status: "EXPIRED", paidAt: null });
   }
 
@@ -297,6 +291,7 @@ app.get("/api/check-order", (req, res) => {
     status: order.status,
     paidAt: order.paidAt || null,
     credentials: order.status === "PAID" ? (() => {
+      const accounts = loadAccounts();
       const account = accounts.find((a) => a.id === order.accountId);
       if (!account) return null;
       return {
@@ -307,7 +302,6 @@ app.get("/api/check-order", (req, res) => {
   });
 });
 
-// POST /api/confirm-sbp — user clicks "I paid" for SBP
 app.post("/api/confirm-sbp", (req, res) => {
   const { orderId } = req.body;
   if (!orderId) return res.status(400).json({ error: "orderId is required" });
@@ -323,7 +317,6 @@ app.post("/api/confirm-sbp", (req, res) => {
   res.json({ success: true, orderId, status: "AWAITING_VERIFICATION" });
 });
 
-// POST /api/verify-invoice — user submits invoice_id from @CryptoBot
 app.post("/api/verify-invoice", (req, res) => {
   const { orderId, invoiceId } = req.body;
   if (!orderId) return res.status(400).json({ error: "orderId is required" });
@@ -349,7 +342,6 @@ app.post("/api/verify-invoice", (req, res) => {
   });
 });
 
-// POST /api/webhook/crypto — Crypto Bot webhook
 app.post("/api/webhook/crypto", (req, res) => {
   try {
     const { update_type, payload } = req.body;
@@ -368,7 +360,7 @@ app.post("/api/webhook/crypto", (req, res) => {
     }
 
     if (order.status === "PAID") {
-      return res.json({ ok: true }); // Already processed
+      return res.json({ ok: true });
     }
 
     storage.updateOrder(order.id, { status: "PAID", paidAt: Date.now() });
@@ -381,7 +373,6 @@ app.post("/api/webhook/crypto", (req, res) => {
   }
 });
 
-// POST /api/admin/verify-order — admin verifies SBP payment
 app.post("/api/admin/verify-order", (req, res) => {
   const { orderId } = req.body;
   if (!orderId) return res.status(400).json({ error: "orderId is required" });
@@ -398,7 +389,8 @@ app.post("/api/admin/verify-order", (req, res) => {
   res.json({ success: true, orderId, status: "PAID" });
 });
 
-// GET /api/rates — exchange rates from Crypto Bot API (cached 10 min)
+// ─── Exchange rates ──────────────────────────────────────────────────────────
+
 let ratesCache = null;
 let ratesCacheTime = 0;
 
@@ -442,17 +434,19 @@ app.get("/api/rates", async (_req, res) => {
   }
 });
 
-// POST /api/cancel-order
+// ─── Cancel order ────────────────────────────────────────────────────────────
+
 app.post("/api/cancel-order", (req, res) => {
   const { accountId, orderId } = req.body;
   if (!accountId) return res.status(400).json({ error: "accountId is required" });
 
+  const accounts = loadAccounts();
   const account = accounts.find((a) => a.id === accountId);
   if (!account) return res.status(404).json({ error: "Account not found" });
 
   storage.releaseAccount(accountId, accounts);
+  saveAccounts(accounts);
 
-  // Also expire any pending orders for this account
   const pendingOrders = storage.getOrdersByAccountId(accountId);
   for (const o of pendingOrders) {
     if (o.status === "PENDING") {
@@ -464,7 +458,7 @@ app.post("/api/cancel-order", (req, res) => {
   res.json({ success: true, accountId, status: "В наличии" });
 });
 
-// ─── Start ────────────────────────────────────────────────────────────────────
+// ─── Start ───────────────────────────────────────────────────────────────────
 
 app.listen(PORT, () => {
   console.log(`\n  MARX SHOP API running on http://localhost:${PORT}\n`);
