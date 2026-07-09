@@ -239,8 +239,8 @@ function GlassPlayer({ src, poster, title, status }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div
-          className="mx-2 mb-2 rounded-2xl bg-black/20 backdrop-blur-xl border border-white/[0.08] overflow-hidden"
-          style={{ WebkitBackdropFilter: "blur(24px)", backdropFilter: "blur(24px)", WebkitBackfaceVisibility: "hidden", backfaceVisibility: "hidden", transform: "translateZ(0)" }}
+          className="mx-2 mb-2 rounded-2xl bg-gradient-to-tr from-black/50 via-white/[0.04] to-black/60 border border-white/[0.15] overflow-hidden"
+          style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1), 0 8px 32px rgba(0,0,0,0.5)" }}
         >
           <div className="flex items-center gap-2 px-3 py-2">
             <button onClick={togglePlay} className="shrink-0 text-white hover:text-white/80 transition-colors drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
