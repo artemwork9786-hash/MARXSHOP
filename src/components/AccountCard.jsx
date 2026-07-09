@@ -208,7 +208,7 @@ function GlassPlayer({ src, poster }) {
         onClick={(e) => e.stopPropagation()}
       >
         <div className="mx-2 mb-2 rounded-2xl border border-white/10 bg-[#121212]/50 backdrop-blur-lg shadow-[0_8px_32px_rgba(0,0,0,0.7)]">
-          <div className="flex items-center gap-3 px-3 py-2">
+          <div className="flex items-center gap-2 px-3 py-2">
             {/* Play/Pause */}
             <button onClick={togglePlay} className="shrink-0 text-white hover:text-white/80 transition-colors">
               {playing ? <Pause size={16} fill="white" /> : <Play size={16} fill="white" className="ml-0.5" />}
@@ -219,8 +219,8 @@ function GlassPlayer({ src, poster }) {
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
 
-            {/* Progress bar with right gap */}
-            <div className="flex-1 mr-4 relative flex items-center h-8">
+            {/* Progress bar — symmetric gaps on both sides */}
+            <div className="flex-1 mx-3 relative flex items-center h-8">
               <div
                 className="absolute left-0 right-0 h-1 rounded-full pointer-events-none"
                 style={{
@@ -259,37 +259,36 @@ function GlassPlayer({ src, poster }) {
               </button>
 
               {showVolume && (
-                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 flex flex-col items-center p-2 rounded-xl border border-white/10 bg-black/60 backdrop-blur-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
+                <div
+                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 flex flex-col items-center p-2.5 rounded-xl border border-white/10 bg-black/60 backdrop-blur-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
                   onMouseEnter={() => clearTimeout(volumeTimer.current)}
                   onMouseLeave={() => { volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}
                 >
-                  <div className="relative h-24 w-6 flex items-center justify-center">
+                  <div className="relative h-24 w-8">
                     {/* Visual track */}
-                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-full rounded-full bg-white/15 pointer-events-none" />
+                    <div className="absolute bottom-1 top-1 left-1/2 -translate-x-1/2 w-1 rounded-full bg-white/15 pointer-events-none" />
                     <div
-                      className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 rounded-full bg-white pointer-events-none"
+                      className="absolute bottom-1 left-1/2 -translate-x-1/2 w-1 rounded-full bg-white pointer-events-none"
                       style={{ height: `${(muted ? 0 : volume) * 100}%` }}
                     />
                     {/* Thumb */}
                     <div
                       className="absolute left-1/2 -translate-x-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none"
-                      style={{ bottom: `calc(${(muted ? 0 : volume) * 100}% - 6px)` }}
+                      style={{ bottom: `calc(${(muted ? 0 : volume) * 92}% + 1px - 6px)` }}
                     />
-                    {/* Transparent input */}
-                    <input
-                      type="range"
-                      min="0"
-                      max="100"
-                      step="1"
-                      value={muted ? 0 : Math.round(volume * 100)}
-                      onInput={handleVolumeChange}
-                      className="absolute inset-0 w-full h-full appearance-none bg-transparent cursor-pointer opacity-0 z-10 m-0 p-0"
-                      style={{
-                        WebkitAppearance: "none",
-                        writingMode: "vertical-lr",
-                        direction: "rtl",
-                      }}
-                    />
+                    {/* Rotated input for vertical drag */}
+                    <div className="absolute inset-0 flex items-center justify-center">
+                      <input
+                        type="range"
+                        min="0"
+                        max="100"
+                        step="1"
+                        value={muted ? 0 : Math.round(volume * 100)}
+                        onInput={handleVolumeChange}
+                        className="w-24 h-1 appearance-none bg-transparent cursor-pointer opacity-0 z-10"
+                        style={{ transform: "rotate(-90deg)", WebkitAppearance: "none" }}
+                      />
+                    </div>
                   </div>
                 </div>
               )}
