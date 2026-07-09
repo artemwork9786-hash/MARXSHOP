@@ -175,7 +175,7 @@ function GlassPlayer({ src, poster }) {
   return (
     <div
       ref={containerRef}
-      className="relative w-full rounded-t-2xl overflow-hidden bg-black cursor-pointer"
+      className="relative w-full aspect-video rounded-t-2xl overflow-hidden bg-[#111] cursor-pointer"
       onClick={(e) => {
         if (e.target.closest("[data-glass-controls]")) return;
         togglePlay();
@@ -190,7 +190,7 @@ function GlassPlayer({ src, poster }) {
         poster={poster}
         preload="metadata"
         playsInline
-        className="block w-full h-auto"
+        className="absolute inset-0 w-full h-full object-cover rounded-t-2xl relative z-10"
       />
 
       {!playing && !isLoading && (
