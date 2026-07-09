@@ -192,6 +192,9 @@ function GlassPlayer({ src, poster, title, status }) {
         className="absolute inset-0 w-full h-full object-cover"
       />
 
+      {/* Bottom gradient for glass effect */}
+      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none z-20" />
+
       {/* Play button */}
       {!playing && !isLoading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
