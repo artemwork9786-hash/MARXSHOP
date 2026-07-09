@@ -219,12 +219,14 @@ function GlassPlayer({ src, poster, title, status }) {
         </div>
       </div>
 
-      {/* Title floating over video */}
+      {/* Title with blur background */}
       {title && (
-        <div className="absolute bottom-14 left-3 z-30 mb-2">
-          <span className="text-2xl font-extrabold text-white tracking-wide drop-shadow-[0_4px_6px_rgba(0,0,0,0.95)]">
-            {title}
-          </span>
+        <div className="absolute bottom-20 left-3 z-30">
+          <div className="rounded-lg bg-black/50 backdrop-blur-md px-3 py-1.5">
+            <span className="text-lg font-extrabold text-white tracking-wider" style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif" }}>
+              {title}
+            </span>
+          </div>
         </div>
       )}
 
@@ -335,10 +337,12 @@ export default function AccountCard({ account, currency, rates, onRent }) {
               isAvailable ? "bg-white text-black" : "bg-neutral-700 text-neutral-400"
             }`}>{account.status}</div>
           </div>
-          <div className="absolute bottom-14 left-3 z-30 mb-2">
-            <span className="text-2xl font-extrabold text-white tracking-wide drop-shadow-[0_4px_6px_rgba(0,0,0,0.95)]">
-              {account.title}
-            </span>
+          <div className="absolute bottom-20 left-3 z-30">
+            <div className="rounded-lg bg-black/50 backdrop-blur-md px-3 py-1.5">
+              <span className="text-lg font-extrabold text-white tracking-wider" style={{ fontFamily: "'Inter', 'SF Pro Display', system-ui, sans-serif" }}>
+                {account.title}
+              </span>
+            </div>
           </div>
         </div>
       )}
