@@ -224,7 +224,7 @@ function GlassPlayer({ src, poster }) {
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-2 mb-2 rounded-2xl border border-white/10 bg-[#121212]/50 backdrop-blur-lg shadow-[0_8px_32px_rgba(0,0,0,0.7)]">
+        <div className="mx-2 mb-2 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.7)]">
           <div className="flex items-center gap-2 px-3 py-2">
             {/* Play/Pause */}
             <button onClick={togglePlay} className="shrink-0 text-white hover:text-white/80 transition-colors">
@@ -339,7 +339,7 @@ export default function AccountCard({ account, currency, rates, onRent }) {
   const videoSrc = hasVideo ? API_URL + account.video_url : null;
 
   return (
-    <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#1A1A1A]">
+    <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#1A1A1A] shadow-2xl shadow-black/80 transition-all duration-300 hover:border-white/15 active:border-white/15">
       <div className="relative h-48 w-full">
         {hasVideo ? (
           <GlassPlayer src={videoSrc} poster={account.image_url || undefined} />

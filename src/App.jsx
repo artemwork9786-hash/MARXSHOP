@@ -270,9 +270,18 @@ function App() {
   );
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[#0A0A0A]">
-      <Header />
-      <main className="flex-1 overflow-y-auto pb-24">
+    <div className="relative flex min-h-dvh flex-col bg-[#0A0A0A] overflow-hidden">
+      {/* White glow background spheres */}
+      <div className="pointer-events-none absolute inset-0 z-0 overflow-hidden">
+        <div className="absolute -top-40 -left-40 h-[500px] w-[500px] rounded-full bg-white/[0.04] blur-[140px]" />
+        <div className="absolute top-1/3 -right-32 h-[400px] w-[400px] rounded-full bg-white/[0.03] blur-[120px]" />
+        <div className="absolute -bottom-40 left-1/3 h-[450px] w-[450px] rounded-full bg-white/[0.03] blur-[160px]" />
+      </div>
+
+      <div className="relative z-10">
+        <Header />
+      </div>
+      <main className="relative z-10 flex-1 overflow-y-auto pb-24">
         {activeTab === "shop" && (
           <ShopTab accounts={accounts} currency={currency} setCurrency={setCurrency} rates={rates} onRent={handleRent} />
         )}
@@ -295,7 +304,9 @@ function App() {
         )}
         {activeTab === "info" && <InfoTab />}
       </main>
-      <BottomNav active={activeTab} setActive={setActiveTab} />
+      <div className="relative z-10">
+        <BottomNav active={activeTab} setActive={setActiveTab} />
+      </div>
     </div>
   );
 }
