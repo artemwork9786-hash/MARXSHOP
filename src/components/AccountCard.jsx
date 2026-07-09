@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Play, Pause, Maximize } from "lucide-react";
+import { Play, Pause, Maximize, Volume2, VolumeX } from "lucide-react";
 import { CURRENCIES } from "../data/accounts";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -30,7 +30,11 @@ function GlassPlayer({ src, poster }) {
   const [showControls, setShowControls] = useState(true);
   const [isLoading, setIsLoading] = useState(false);
   const [dragging, setDragging] = useState(false);
+  const [volume, setVolume] = useState(0.5);
+  const [muted, setMuted] = useState(false);
+  const [showVolume, setShowVolume] = useState(false);
   const hideTimer = useRef(null);
+  const volumeTimer = useRef(null);
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -64,6 +68,25 @@ function GlassPlayer({ src, poster }) {
     setDragging(false);
   }, []);
 
+  const toggleMute = useCallback(() => {
+    const v = videoRef.current;
+    if (!v) return;
+    v.muted = !v.muted;
+    setMuted(v.muted);
+  }, []);
+
+  const handleVolumeChange = useCallback((e) => {
+    const v = videoRef.current;
+    if (!v) return;
+    const val = parseFloat(e.target.value);
+    v.volume = val;
+    setVolume(val);
+    if (val > 0 && v.muted) {
+      v.muted = false;
+      setMuted(false);
+    }
+  }, []);
+
   const toggleFullscreen = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
@@ -77,6 +100,7 @@ function GlassPlayer({ src, poster }) {
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
+    v.volume = 0.5;
 
     const onTimeUpdate = () => {
       if (!dragging) setCurrentTime(v.currentTime);
@@ -185,15 +209,18 @@ function GlassPlayer({ src, poster }) {
       >
         <div className="mx-2 mb-2 rounded-2xl border border-white/10 bg-[#121212]/50 backdrop-blur-lg shadow-[0_8px_32px_rgba(0,0,0,0.7)]">
           <div className="flex items-center gap-3 px-3 py-2">
+            {/* Play/Pause */}
             <button onClick={togglePlay} className="shrink-0 text-white hover:text-white/80 transition-colors">
               {playing ? <Pause size={16} fill="white" /> : <Play size={16} fill="white" className="ml-0.5" />}
             </button>
 
+            {/* Timer */}
             <span className="text-[11px] font-medium text-white/70 tabular-nums shrink-0 select-none">
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
 
-            <div className="flex-1 relative flex items-center h-8">
+            {/* Progress bar with right gap */}
+            <div className="flex-1 mr-4 relative flex items-center h-8">
               <div
                 className="absolute left-0 right-0 h-1 rounded-full pointer-events-none"
                 style={{
@@ -221,6 +248,54 @@ function GlassPlayer({ src, poster }) {
               />
             </div>
 
+            {/* Volume */}
+            <div
+              className="relative shrink-0"
+              onMouseEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }}
+              onMouseLeave={() => { volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}
+            >
+              <button onClick={toggleMute} className="text-white/70 hover:text-white transition-colors">
+                {muted || volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
+              </button>
+
+              {showVolume && (
+                <div className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 flex flex-col items-center p-2 rounded-xl border border-white/10 bg-black/60 backdrop-blur-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
+                  onMouseEnter={() => clearTimeout(volumeTimer.current)}
+                  onMouseLeave={() => { volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}
+                >
+                  <div className="relative h-24 w-6 flex items-center justify-center">
+                    {/* Visual track */}
+                    <div className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 h-full rounded-full bg-white/15 pointer-events-none" />
+                    <div
+                      className="absolute bottom-0 left-1/2 -translate-x-1/2 w-1 rounded-full bg-white pointer-events-none"
+                      style={{ height: `${(muted ? 0 : volume) * 100}%` }}
+                    />
+                    {/* Thumb */}
+                    <div
+                      className="absolute left-1/2 -translate-x-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none"
+                      style={{ bottom: `calc(${(muted ? 0 : volume) * 100}% - 6px)` }}
+                    />
+                    {/* Transparent input */}
+                    <input
+                      type="range"
+                      min="0"
+                      max="100"
+                      step="1"
+                      value={muted ? 0 : Math.round(volume * 100)}
+                      onInput={handleVolumeChange}
+                      className="absolute inset-0 w-full h-full appearance-none bg-transparent cursor-pointer opacity-0 z-10 m-0 p-0"
+                      style={{
+                        WebkitAppearance: "none",
+                        writingMode: "vertical-lr",
+                        direction: "rtl",
+                      }}
+                    />
+                  </div>
+                </div>
+              )}
+            </div>
+
+            {/* Fullscreen */}
             <button onClick={toggleFullscreen} className="shrink-0 text-white/70 hover:text-white transition-colors">
               <Maximize size={16} />
             </button>
