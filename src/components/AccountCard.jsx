@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Play, Pause, Maximize, Loader } from "lucide-react";
+import { Play, Pause, Maximize } from "lucide-react";
 import { CURRENCIES } from "../data/accounts";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -167,7 +167,7 @@ function GlassPlayer({ src, poster }) {
       {isLoading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 backdrop-blur-md border border-white/20 shadow-xl shadow-black/40">
-            <Loader size={24} className="text-white animate-spin" />
+            <div className="h-7 w-7 rounded-full border-2 border-white border-t-transparent animate-spin" />
           </div>
         </div>
       )}
@@ -208,23 +208,25 @@ function GlassPlayer({ src, poster }) {
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
 
-            {/* Range input */}
-            <input
-              type="range"
-              min="0"
-              max="1000"
-              value={seeking || !duration ? (currentTime / (duration || 1)) * 1000 : (currentTime / duration) * 1000}
-              onInput={onSeekInput}
-              onMouseDown={onSeekStart}
-              onMouseUp={onSeekEnd}
-              onTouchStart={onSeekStart}
-              onTouchEnd={onSeekEnd}
-              className="flex-1 h-1 appearance-none bg-transparent cursor-pointer group/range
-                [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-white/15
-                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_0_6px_rgba(255,255,255,0.4)] [&::-webkit-slider-thumb]:mt-[-5px]
-                [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-white/15 [&::-moz-range-track]:border-none
-                [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:shadow-[0_0_6px_rgba(255,255,255,0.4)]"
-            />
+            {/* Range input with expanded hitbox */}
+            <div className="flex-1 flex items-center py-3">
+              <input
+                type="range"
+                min="0"
+                max="1000"
+                value={seeking || !duration ? (currentTime / (duration || 1)) * 1000 : (currentTime / duration) * 1000}
+                onInput={onSeekInput}
+                onMouseDown={onSeekStart}
+                onMouseUp={onSeekEnd}
+                onTouchStart={onSeekStart}
+                onTouchEnd={onSeekEnd}
+                className="w-full h-1 appearance-none bg-transparent cursor-pointer
+                  [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-white/15
+                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_0_6px_rgba(255,255,255,0.4)] [&::-webkit-slider-thumb]:mt-[-5px]
+                  [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-white/15 [&::-moz-range-track]:border-none
+                  [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:shadow-[0_0_6px_rgba(255,255,255,0.4)]"
+              />
+            </div>
 
             {/* Fullscreen */}
             <button
