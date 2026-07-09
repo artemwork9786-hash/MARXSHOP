@@ -107,6 +107,24 @@ function GlassPlayer({ src, poster, title, status }) {
   const toggleFullscreen = useCallback(() => {
     const el = containerRef.current;
     if (!el) return;
+
+    // Telegram Mini App — use Telegram WebApp API
+    const tg = window.Telegram?.WebApp;
+    if (tg) {
+      // Expand to full height
+      tg.expand();
+      // Toggle fullscreen class on the player container
+      if (el.classList.contains("player-fullscreen")) {
+        el.classList.remove("player-fullscreen");
+        el.style.cssText = "";
+      } else {
+        el.classList.add("player-fullscreen");
+        el.style.cssText = "position:fixed !important;inset:0 !important;z-index:9999 !important;width:100vw !important;height:100vh !important;border-radius:0 !important;";
+      }
+      return;
+    }
+
+    // Standard browser fullscreen
     if (document.fullscreenElement || document.webkitFullscreenElement) {
       (document.exitFullscreen || document.webkitExitFullscreen).call(document);
     } else {
