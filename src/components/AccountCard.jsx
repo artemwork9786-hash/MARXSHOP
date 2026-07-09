@@ -381,7 +381,7 @@ export default function AccountCard({ account, currency, rates, onRent }) {
 
     draw();
     return () => cancelAnimationFrame(animId);
-  }, [src, hasVideo]);
+  }, [hasVideo]);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#1A1A1A] shadow-2xl shadow-black/80">
