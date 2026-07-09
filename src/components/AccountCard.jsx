@@ -192,8 +192,17 @@ function GlassPlayer({ src, poster, title, status }) {
         className="absolute inset-0 w-full h-full object-cover"
       />
 
-      {/* Bottom gradient for glass effect */}
-      <div className="absolute bottom-0 left-0 right-0 h-24 bg-gradient-to-t from-black/80 via-black/40 to-transparent pointer-events-none z-20" />
+      {/* Blurred video layer for glass effect */}
+      <div className="absolute bottom-0 left-0 right-0 h-28 overflow-hidden pointer-events-none z-20">
+        <video
+          src={src}
+          preload="metadata"
+          playsInline
+          muted
+          className="absolute bottom-0 left-1/2 w-full h-full object-cover blur-xl opacity-60 scale-110"
+          style={{ transform: "translateX(-50%) translateY(30%)" }}
+        />
+      </div>
 
       {/* Play button */}
       {!playing && !isLoading && (
@@ -236,7 +245,7 @@ function GlassPlayer({ src, poster, title, status }) {
       {/* Glassmorphism Controls */}
       <div
         data-glass-controls
-        className={`absolute bottom-0 left-0 right-0 z-40 transition-all duration-300 ease-out ${
+        className={`absolute bottom-0 left-0 right-0 z-30 transition-all duration-300 ease-out ${
           showControls ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
         }`}
         onClick={(e) => e.stopPropagation()}
