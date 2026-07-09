@@ -305,7 +305,7 @@ function GlassPlayer({ src, poster, title, status }) {
 
               {showVolume && (
                 <div
-                  className="absolute bottom-full right-0 mb-3 flex flex-col items-center p-2.5 rounded-xl border border-white/10 bg-black/60 backdrop-blur-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] origin-bottom animate-[slideUp_0.3s_cubic-bezier(0.4,0,0.2,1)]"
+                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 flex flex-col items-center p-2.5 rounded-xl border border-white/10 bg-black/60 backdrop-blur-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] origin-bottom animate-[slideUp_0.3s_cubic-bezier(0.4,0,0.2,1)]"
                   onMouseEnter={() => clearTimeout(volumeTimer.current)}
                   onMouseLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}
                 >
