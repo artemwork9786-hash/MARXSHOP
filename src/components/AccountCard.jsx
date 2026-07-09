@@ -175,7 +175,7 @@ function GlassPlayer({ src, poster }) {
   return (
     <div
       ref={containerRef}
-      className="relative h-48 w-full rounded-t-2xl overflow-hidden bg-black cursor-pointer"
+      className="relative w-full rounded-t-2xl overflow-hidden bg-black cursor-pointer"
       onClick={(e) => {
         if (e.target.closest("[data-glass-controls]")) return;
         togglePlay();
@@ -184,22 +184,13 @@ function GlassPlayer({ src, poster }) {
       onMouseMove={resetHideTimer}
       onTouchStart={resetHideTimer}
     >
-      {/* Background blur video layer */}
-      <video
-        src={src}
-        preload="metadata"
-        playsInline
-        muted
-        className="absolute inset-0 w-full h-full object-cover blur-xl opacity-50 scale-105 pointer-events-none"
-      />
-      {/* Main video layer */}
       <video
         ref={videoRef}
         src={src}
         poster={poster}
         preload="metadata"
         playsInline
-        className="absolute inset-0 h-full w-full object-contain relative z-10"
+        className="block w-full h-auto"
       />
 
       {!playing && !isLoading && (
