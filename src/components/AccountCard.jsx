@@ -23,6 +23,7 @@ function formatTime(sec) {
 function GlassPlayer({ src, poster, title, status }) {
   const containerRef = useRef(null);
   const videoRef = useRef(null);
+  const canvasRef = useRef(null);
   const inputRef = useRef(null);
   const volumeRef = useRef(null);
   const [playing, setPlaying] = useState(false);
@@ -37,6 +38,8 @@ function GlassPlayer({ src, poster, title, status }) {
   const [volumeDragging, setVolumeDragging] = useState(false);
   const hideTimer = useRef(null);
   const volumeTimer = useRef(null);
+  const rafId = useRef(null);
+  const isPlayingRef = useRef(false);
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -168,6 +171,34 @@ function GlassPlayer({ src, poster, title, status }) {
     return () => clearTimeout(hideTimer.current);
   }, []);
 
+  // Canvas 60fps sync — runs only when video is playing
+  useEffect(() => {
+    const v = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!v || !canvas) return;
+
+    const ctx = canvas.getContext("2d");
+
+    const draw = () => {
+      if (!isPlayingRef.current) {
+        rafId.current = requestAnimationFrame(draw);
+        return;
+      }
+      if (v.readyState >= 2) {
+        ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+      }
+      rafId.current = requestAnimationFrame(draw);
+    };
+
+    rafId.current = requestAnimationFrame(draw);
+    return () => { if (rafId.current) cancelAnimationFrame(rafId.current); };
+  }, [src]);
+
+  // Sync isPlayingRef with state
+  useEffect(() => {
+    isPlayingRef.current = playing;
+  }, [playing]);
+
   const inputValue = (currentTime / (duration || 1)) * 1000;
   const isAvailable = status === "В наличии";
 
@@ -238,11 +269,18 @@ function GlassPlayer({ src, poster, title, status }) {
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div
-          className="mx-2 mb-2 rounded-2xl bg-gradient-to-tr from-black/50 via-white/[0.04] to-black/60 border border-white/[0.15] overflow-hidden"
-          style={{ boxShadow: "inset 0 1px 0 rgba(255,255,255,0.1), 0 8px 32px rgba(0,0,0,0.5)" }}
-        >
-          <div className="flex items-center gap-2 px-3 py-2">
+        <div className="mx-2 mb-2 rounded-2xl overflow-hidden relative">
+          {/* Canvas blur background */}
+          <canvas
+            ref={canvasRef}
+            width={160}
+            height={40}
+            className="absolute inset-0 w-full h-full object-cover filter blur-[24px] scale-125 opacity-95 pointer-events-none"
+          />
+          {/* Dark tint */}
+          <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+          {/* Content */}
+          <div className="relative z-10 flex items-center gap-2 px-3 py-2">
             <button onClick={togglePlay} className="shrink-0 text-white hover:text-white/80 transition-colors drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
               {playing ? <Pause size={16} fill="white" /> : <Play size={16} fill="white" className="ml-0.5" />}
             </button>
