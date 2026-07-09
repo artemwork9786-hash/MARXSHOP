@@ -91,6 +91,7 @@ function AddScreen({ onDone }) {
 function ListScreen({ onEdit, onAdd, onAccountsChanged }) {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
+  const [confirmDelete, setConfirmDelete] = useState(null);
 
   const load = async () => {
     setLoading(true);
@@ -104,12 +105,17 @@ function ListScreen({ onEdit, onAdd, onAccountsChanged }) {
   useEffect(() => { load(); }, []);
 
   const handleDelete = async (id, title) => {
-    if (!window.confirm(`Удалить "${title}"?`)) return;
+    setConfirmDelete({ id, title });
+  };
+
+  const confirmDeleteAction = async () => {
+    if (!confirmDelete) return;
     try {
-      await deleteAccount(id);
-      setAccounts((prev) => prev.filter((a) => a.id !== id));
+      await deleteAccount(confirmDelete.id);
+      setAccounts((prev) => prev.filter((a) => a.id !== confirmDelete.id));
       if (onAccountsChanged) onAccountsChanged();
     } catch { /* ignore */ }
+    setConfirmDelete(null);
   };
 
   return (
@@ -143,6 +149,26 @@ function ListScreen({ onEdit, onAdd, onAccountsChanged }) {
               </button>
             </div>
           ))}
+        </div>
+      )}
+
+      {confirmDelete && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm">
+          <div className="mx-4 w-full max-w-sm rounded-2xl border border-white/10 bg-[#1A1A1A] p-6">
+            <p className="text-sm font-bold text-white text-center">
+              Удалить «{confirmDelete.title}»?
+            </p>
+            <div className="mt-5 flex gap-3">
+              <button onClick={() => setConfirmDelete(null)}
+                className="flex-1 rounded-xl border border-white/10 py-3 text-sm font-bold text-neutral-400 uppercase tracking-wider hover:bg-white/5">
+                Отмена
+              </button>
+              <button onClick={confirmDeleteAction}
+                className="flex-1 rounded-xl bg-red-600 py-3 text-sm font-bold text-white uppercase tracking-wider active:scale-[0.98]">
+                Удалить
+              </button>
+            </div>
+          </div>
         </div>
       )}
     </div>
