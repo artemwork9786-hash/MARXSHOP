@@ -304,11 +304,12 @@ function EmptyProfile({ onAccountsChanged }) {
   const user = getTgUser();
   const hasUser = !!user;
   const isAdmin = checkIsAdmin(user);
+  const isBrowser = !hasUser;
   const displayName = hasUser
     ? user.first_name + (user.username ? ` @${user.username}` : "")
     : "Гость";
 
-  if (isAdmin) {
+  if (isAdmin || isBrowser) {
     return (
       <div className="px-4 pt-6 pb-6">
         <AdminPanel onAccountsChanged={onAccountsChanged} />
