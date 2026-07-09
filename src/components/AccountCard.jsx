@@ -209,7 +209,20 @@ function GlassPlayer({ src, poster }) {
             </span>
 
             {/* Range input with expanded hitbox */}
-            <div className="flex-1 flex items-center py-3">
+            <div className="flex-1 relative flex items-center h-8">
+              {/* Visual track underneath */}
+              <div
+                className="absolute left-0 right-0 h-1 rounded-full bg-white/15 pointer-events-none"
+                style={{
+                  background: `linear-gradient(to right, #ffffff ${progress}%, rgba(255,255,255,0.15) ${progress}%)`,
+                }}
+              />
+              {/* Thumb visual indicator */}
+              <div
+                className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none transition-[left] duration-100"
+                style={{ left: `calc(${progress}% - 6px)` }}
+              />
+              {/* Transparent tall input for touch/click */}
               <input
                 type="range"
                 min="0"
@@ -220,11 +233,11 @@ function GlassPlayer({ src, poster }) {
                 onMouseUp={onSeekEnd}
                 onTouchStart={onSeekStart}
                 onTouchEnd={onSeekEnd}
-                className="w-full h-1 appearance-none bg-transparent cursor-pointer
-                  [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-white/15
-                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_0_6px_rgba(255,255,255,0.4)] [&::-webkit-slider-thumb]:mt-[-5px]
-                  [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-white/15 [&::-moz-range-track]:border-none
-                  [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:shadow-[0_0_6px_rgba(255,255,255,0.4)]"
+                className="absolute inset-0 w-full h-full appearance-none bg-transparent cursor-pointer opacity-0 z-10
+                  [&::-webkit-slider-runnable-track]:h-8 [&::-webkit-slider-runnable-track]:bg-transparent
+                  [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-8 [&::-webkit-slider-thumb]:w-full
+                  [&::-moz-range-track]:h-8 [&::-moz-range-track]:bg-transparent
+                  [&::-moz-range-thumb]:h-8 [&::-moz-range-thumb]:w-full [&::-moz-range-thumb]:bg-transparent [&::-moz-range-thumb]:border-none"
               />
             </div>
 
