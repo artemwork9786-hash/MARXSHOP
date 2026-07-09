@@ -219,12 +219,12 @@ function GlassPlayer({ src, poster, title, status }) {
         </div>
       </div>
 
-      {/* Title with blur background */}
+      {/* Title floating over video */}
       {title && (
-        <div className="absolute bottom-14 left-3 z-30">
-          <div className="rounded-lg bg-black/40 backdrop-blur-md px-1.5 border border-white/10">
-            <span className="text-sm font-bold text-white tracking-wide">{title}</span>
-          </div>
+        <div className="absolute bottom-14 left-3 z-30 mb-2">
+          <span className="text-2xl font-extrabold text-white tracking-wide drop-shadow-[0_4px_6px_rgba(0,0,0,0.95)]">
+            {title}
+          </span>
         </div>
       )}
 
@@ -236,7 +236,7 @@ function GlassPlayer({ src, poster, title, status }) {
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-2 mb-2 rounded-2xl border border-white/10 bg-black/40 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.7)]">
+        <div className="mx-2 mb-2 rounded-2xl bg-black/40 backdrop-blur-xl shadow-[0_8px_32px_rgba(0,0,0,0.7)]">
           <div className="flex items-center gap-2 px-3 py-2">
             <button onClick={togglePlay} className="shrink-0 text-white hover:text-white/80 transition-colors">
               {playing ? <Pause size={16} fill="white" /> : <Play size={16} fill="white" className="ml-0.5" />}
@@ -335,10 +335,10 @@ export default function AccountCard({ account, currency, rates, onRent }) {
               isAvailable ? "bg-white text-black" : "bg-neutral-700 text-neutral-400"
             }`}>{account.status}</div>
           </div>
-          <div className="absolute bottom-14 left-3 z-30">
-            <div className="rounded-lg bg-black/40 backdrop-blur-md px-1.5 border border-white/10">
-              <span className="text-sm font-bold text-white tracking-wide">{account.title}</span>
-            </div>
+          <div className="absolute bottom-14 left-3 z-30 mb-2">
+            <span className="text-2xl font-extrabold text-white tracking-wide drop-shadow-[0_4px_6px_rgba(0,0,0,0.95)]">
+              {account.title}
+            </span>
           </div>
         </div>
       )}
