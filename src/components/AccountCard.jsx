@@ -180,8 +180,9 @@ function GlassPlayer({ src, poster, title, status }) {
 
     const draw = () => {
       if (v.readyState >= 2) {
-        canvas.width = v.videoWidth || 640;
-        canvas.height = v.videoHeight || 360;
+        // Low resolution for performance (blur hides pixels anyway)
+        canvas.width = 320;
+        canvas.height = 180;
         ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
       }
       animId = requestAnimationFrame(draw);
@@ -216,11 +217,14 @@ function GlassPlayer({ src, poster, title, status }) {
       />
 
       {/* Canvas blur background for controls */}
-      <div className="absolute bottom-0 left-0 right-0 h-16 overflow-hidden pointer-events-none z-20">
+      <div className="absolute bottom-0 left-0 right-0 h-20 overflow-hidden pointer-events-none z-20">
         <canvas
           ref={canvasRef}
-          className="absolute bottom-0 left-0 w-full h-full object-cover blur-xl scale-110 opacity-70"
+          className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[120%] h-[150%] object-cover blur-[20px] scale-110"
+          style={{ imageRendering: "auto" }}
         />
+        {/* Dark tint overlay */}
+        <div className="absolute inset-0 bg-black/30" />
       </div>
 
       {/* Play button */}
@@ -348,12 +352,36 @@ function GlassPlayer({ src, poster, title, status }) {
 // ─── Account Card ────────────────────────────────────────────────────────────
 
 export default function AccountCard({ account, currency, rates, onRent }) {
+  const priceCanvasRef = useRef(null);
+  const priceVideoRef = useRef(null);
   const isAvailable = account.status === "В наличии";
   const curr = CURRENCIES.find((c) => c.code === currency);
   const converted = convertPrice(account.price, currency, rates);
   const formattedPrice = converted.toLocaleString("ru-RU");
   const hasVideo = !!account.video_url;
   const videoSrc = hasVideo ? API_URL + account.video_url : null;
+
+  // Canvas capture for price bar blur
+  useEffect(() => {
+    const v = priceVideoRef.current;
+    const canvas = priceCanvasRef.current;
+    if (!v || !canvas || !hasVideo) return;
+
+    const ctx = canvas.getContext("2d");
+    let animId;
+
+    const draw = () => {
+      if (v.readyState >= 2) {
+        canvas.width = 320;
+        canvas.height = 80;
+        ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+      }
+      animId = requestAnimationFrame(draw);
+    };
+
+    draw();
+    return () => cancelAnimationFrame(animId);
+  }, [src, hasVideo]);
 
   return (
     <div className="overflow-hidden rounded-2xl border border-white/5 bg-[#1A1A1A] shadow-2xl shadow-black/80">
@@ -378,16 +406,27 @@ export default function AccountCard({ account, currency, rates, onRent }) {
         </div>
       )}
 
-      {/* Price bar with blur background */}
-      <div className="relative bg-[#1A1A1A]">
+      {/* Price bar with canvas blur background */}
+      <div className="relative bg-[#1A1A1A] overflow-hidden">
         {hasVideo && (
-          <video
-            src={`${videoSrc}#t=0.001`}
-            muted
-            playsInline
-            preload="metadata"
-            className="absolute inset-0 w-full h-full object-cover blur-xl opacity-30 pointer-events-none"
-          />
+          <>
+            {/* Hidden video for frame capture */}
+            <video
+              ref={priceVideoRef}
+              src={`${videoSrc}#t=0.001`}
+              muted
+              playsInline
+              preload="metadata"
+              className="absolute w-0 h-0 opacity-0 pointer-events-none"
+            />
+            {/* Canvas blur background */}
+            <canvas
+              ref={priceCanvasRef}
+              className="absolute inset-0 w-full h-full object-cover blur-[20px] scale-110 opacity-50"
+            />
+            {/* Dark tint */}
+            <div className="absolute inset-0 bg-black/40" />
+          </>
         )}
         <div className="relative z-10 flex items-center justify-between px-4 py-3">
           <span className="text-xl font-bold text-white">
