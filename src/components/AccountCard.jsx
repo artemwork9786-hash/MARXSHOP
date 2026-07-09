@@ -115,6 +115,7 @@ function GlassPlayer({ src, poster, title, status }) {
     }
   }, []);
 
+  // Video event listeners
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
@@ -169,7 +170,7 @@ function GlassPlayer({ src, poster, title, status }) {
     return () => clearTimeout(hideTimer.current);
   }, []);
 
-  // Canvas blur capture for glass controls
+  // Canvas blur capture at ~24fps
   useEffect(() => {
     const v = videoRef.current;
     const canvas = canvasRef.current;
@@ -177,18 +178,22 @@ function GlassPlayer({ src, poster, title, status }) {
 
     const ctx = canvas.getContext("2d");
     let animId;
+    let lastFrame = 0;
+    const interval = 1000 / 24;
 
-    const draw = () => {
-      if (v.readyState >= 2) {
-        // Low resolution for performance (blur hides pixels anyway)
-        canvas.width = 320;
-        canvas.height = 180;
-        ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+    const draw = (timestamp) => {
+      if (timestamp - lastFrame >= interval) {
+        if (v.readyState >= 2) {
+          canvas.width = 320;
+          canvas.height = 180;
+          ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+        }
+        lastFrame = timestamp;
       }
       animId = requestAnimationFrame(draw);
     };
 
-    draw();
+    animId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animId);
   }, [src]);
 
@@ -207,6 +212,7 @@ function GlassPlayer({ src, poster, title, status }) {
       onMouseMove={resetHideTimer}
       onTouchStart={resetHideTimer}
     >
+      {/* Main video */}
       <video
         ref={videoRef}
         src={src}
@@ -215,17 +221,6 @@ function GlassPlayer({ src, poster, title, status }) {
         playsInline
         className="absolute inset-0 w-full h-full object-cover"
       />
-
-      {/* Canvas blur background for controls */}
-      <div className="absolute bottom-0 left-0 right-0 h-20 overflow-hidden pointer-events-none z-20">
-        <canvas
-          ref={canvasRef}
-          className="absolute bottom-0 left-1/2 -translate-x-1/2 w-[120%] h-[150%] object-cover blur-[20px] scale-110"
-          style={{ imageRendering: "auto" }}
-        />
-        {/* Dark tint overlay */}
-        <div className="absolute inset-0 bg-black/30" />
-      </div>
 
       {/* Play button */}
       {!playing && !isLoading && (
@@ -256,7 +251,7 @@ function GlassPlayer({ src, poster, title, status }) {
 
       {/* Title with blur background */}
       {title && (
-        <div className="absolute bottom-20 left-3 z-30">
+        <div className="absolute bottom-24 left-3 z-30">
           <div className="rounded-lg bg-black/40 backdrop-blur-xl border border-white/10 px-2.5 py-1 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
             <span className="text-sm font-bold text-white tracking-wide" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
               {title}
@@ -265,50 +260,54 @@ function GlassPlayer({ src, poster, title, status }) {
         </div>
       )}
 
-      {/* Glassmorphism Controls */}
+      {/* Ultra-thin progress bar above glass panel */}
       <div
         data-glass-controls
-        className={`absolute bottom-0 left-0 right-0 z-30 transition-all duration-300 ease-out ${
+        className={`absolute bottom-[120px] left-0 right-0 z-30 px-2 transition-all duration-300 ease-out ${
           showControls ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-2 mb-2 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.7)]">
-          <div className="flex items-center gap-2 px-3 py-2">
-            <button onClick={togglePlay} className="shrink-0 text-white hover:text-white/80 transition-colors">
-              {playing ? <Pause size={16} fill="white" /> : <Play size={16} fill="white" className="ml-0.5" />}
-            </button>
+        <div className="relative h-[3px] w-full cursor-pointer rounded-full bg-white/15 group/track" onClick={(e) => {
+          const rect = e.currentTarget.getBoundingClientRect();
+          const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+          const v = videoRef.current;
+          if (v && v.duration) v.currentTime = pct * v.duration;
+        }}>
+          <div className="absolute top-0 left-0 h-full rounded-full bg-white transition-[width] duration-100" style={{ width: `${progress}%` }} />
+          <div className="absolute top-1/2 -translate-y-1/2 h-2.5 w-2.5 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none opacity-0 group-hover/track:opacity-100 transition-opacity" style={{ left: `calc(${progress}% - 5px)` }} />
+        </div>
+      </div>
 
-            <span className="text-[11px] font-medium text-white/70 tabular-nums shrink-0 select-none">
+      {/* Glass panel: canvas blur + dark tint + controls */}
+      <div
+        data-glass-controls
+        className={`absolute bottom-0 left-0 right-0 h-[120px] overflow-hidden z-20 transition-all duration-300 ease-out ${
+          showControls ? "translate-y-0 opacity-100" : "translate-y-4 opacity-0 pointer-events-none"
+        }`}
+        onClick={(e) => e.stopPropagation()}
+      >
+        {/* Canvas blur layer */}
+        <canvas
+          ref={canvasRef}
+          className="absolute inset-0 w-full h-full object-cover scale-125 pointer-events-none"
+          style={{ filter: "blur(20px)" }}
+        />
+        {/* Dark tint */}
+        <div className="absolute inset-0 bg-black/30 pointer-events-none" />
+
+        {/* Controls content */}
+        <div className="relative z-10 h-full flex items-center justify-between px-4">
+          <div className="flex items-center gap-3">
+            <button onClick={togglePlay} className="text-white hover:text-white/80 transition-colors">
+              {playing ? <Pause size={18} fill="white" /> : <Play size={18} fill="white" className="ml-0.5" />}
+            </button>
+            <span className="text-xs font-medium text-white/70 tabular-nums select-none">
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
+          </div>
 
-            <div className="flex-1 mx-3 relative flex items-center h-8">
-              <div
-                className="absolute left-0 right-0 h-1 rounded-full pointer-events-none"
-                style={{ background: `linear-gradient(to right, #ffffff ${progress}%, rgba(255,255,255,0.15) ${progress}%)` }}
-              />
-              <div
-                className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none"
-                style={{ left: `calc(${progress}% - 6px)` }}
-              />
-              <input
-                ref={inputRef}
-                type="range"
-                min="0"
-                max="1000"
-                step="1"
-                value={Math.round(inputValue)}
-                onInput={handleInput}
-                onMouseDown={handlePointerDown}
-                onMouseUp={handlePointerUp}
-                onTouchStart={handlePointerDown}
-                onTouchEnd={handlePointerUp}
-                className="absolute inset-0 w-full h-full appearance-none bg-transparent cursor-pointer opacity-0 z-10 m-0 p-0"
-                style={{ WebkitAppearance: "none", MozAppearance: "none" }}
-              />
-            </div>
-
+          <div className="flex items-center gap-3">
             <div
               className="relative shrink-0"
               onMouseEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }}
@@ -317,7 +316,6 @@ function GlassPlayer({ src, poster, title, status }) {
               <button onClick={toggleMute} className="text-white/70 hover:text-white transition-colors">
                 {muted || volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
               </button>
-
               {showVolume && (
                 <div
                   className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 flex flex-col items-center p-2.5 rounded-xl border border-white/10 bg-black/60 backdrop-blur-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
@@ -338,8 +336,7 @@ function GlassPlayer({ src, poster, title, status }) {
                 </div>
               )}
             </div>
-
-            <button onClick={toggleFullscreen} className="shrink-0 text-white/70 hover:text-white transition-colors">
+            <button onClick={toggleFullscreen} className="text-white/70 hover:text-white transition-colors">
               <Maximize size={16} />
             </button>
           </div>
@@ -369,17 +366,22 @@ export default function AccountCard({ account, currency, rates, onRent }) {
 
     const ctx = canvas.getContext("2d");
     let animId;
+    let lastFrame = 0;
+    const interval = 1000 / 24;
 
-    const draw = () => {
-      if (v.readyState >= 2) {
-        canvas.width = 320;
-        canvas.height = 80;
-        ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+    const draw = (timestamp) => {
+      if (timestamp - lastFrame >= interval) {
+        if (v.readyState >= 2) {
+          canvas.width = 320;
+          canvas.height = 80;
+          ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+        }
+        lastFrame = timestamp;
       }
       animId = requestAnimationFrame(draw);
     };
 
-    draw();
+    animId = requestAnimationFrame(draw);
     return () => cancelAnimationFrame(animId);
   }, [hasVideo]);
 
@@ -396,7 +398,7 @@ export default function AccountCard({ account, currency, rates, onRent }) {
               isAvailable ? "bg-white text-black" : "bg-neutral-700 text-neutral-400"
             }`}>{account.status}</div>
           </div>
-          <div className="absolute bottom-20 left-3 z-30">
+          <div className="absolute bottom-24 left-3 z-30">
             <div className="rounded-lg bg-black/40 backdrop-blur-xl border border-white/10 px-2.5 py-1 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
               <span className="text-sm font-bold text-white tracking-wide" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
                 {account.title}
@@ -407,10 +409,9 @@ export default function AccountCard({ account, currency, rates, onRent }) {
       )}
 
       {/* Price bar with canvas blur background */}
-      <div className="relative bg-[#1A1A1A] overflow-hidden">
+      <div className="relative h-[120px] overflow-hidden">
         {hasVideo && (
           <>
-            {/* Hidden video for frame capture */}
             <video
               ref={priceVideoRef}
               src={`${videoSrc}#t=0.001`}
@@ -419,17 +420,17 @@ export default function AccountCard({ account, currency, rates, onRent }) {
               preload="metadata"
               className="absolute w-0 h-0 opacity-0 pointer-events-none"
             />
-            {/* Canvas blur background */}
             <canvas
               ref={priceCanvasRef}
-              className="absolute inset-0 w-full h-full object-cover blur-[20px] scale-110 opacity-50"
+              className="absolute inset-0 w-full h-full object-cover scale-125 pointer-events-none"
+              style={{ filter: "blur(20px)" }}
             />
-            {/* Dark tint */}
-            <div className="absolute inset-0 bg-black/40" />
+            <div className="absolute inset-0 bg-black/30 pointer-events-none" />
           </>
         )}
-        <div className="relative z-10 flex items-center justify-between px-4 py-3">
-          <span className="text-xl font-bold text-white">
+        <div className="absolute inset-0 bg-[#1A1A1A]" style={{ display: hasVideo ? "none" : "block" }} />
+        <div className="relative z-10 h-full flex items-center justify-between px-4">
+          <span className="text-xl font-bold text-white" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
             {formattedPrice}<span className="ml-1 text-sm text-neutral-500">{curr.symbol}</span>
           </span>
           <button
