@@ -238,13 +238,13 @@ function GlassPlayer({ src, poster, title, status }) {
         }`}
         onClick={(e) => e.stopPropagation()}
       >
-        <div className="mx-2 mb-2 rounded-2xl bg-black/60 backdrop-blur-xl border border-white/10 shadow-[0_8px_32px_rgba(0,0,0,0.7)]">
+        <div className="mx-2 mb-2 rounded-2xl bg-black/20 backdrop-blur-xl border border-white/[0.08]">
           <div className="flex items-center gap-2 px-3 py-2">
-            <button onClick={togglePlay} className="shrink-0 text-white hover:text-white/80 transition-colors">
+            <button onClick={togglePlay} className="shrink-0 text-white hover:text-white/80 transition-colors drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
               {playing ? <Pause size={16} fill="white" /> : <Play size={16} fill="white" className="ml-0.5" />}
             </button>
 
-            <span className="text-[11px] font-medium text-white/70 tabular-nums shrink-0 select-none">
+            <span className="text-[11px] font-medium text-white tabular-nums shrink-0 select-none drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
 
@@ -279,7 +279,7 @@ function GlassPlayer({ src, poster, title, status }) {
               onMouseEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }}
               onMouseLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}
             >
-              <button onClick={toggleMute} className="text-white/70 hover:text-white transition-colors">
+              <button onClick={toggleMute} className="text-white/70 hover:text-white transition-colors drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
                 {muted || volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
               </button>
 
@@ -304,7 +304,7 @@ function GlassPlayer({ src, poster, title, status }) {
               )}
             </div>
 
-            <button onClick={toggleFullscreen} className="shrink-0 text-white/70 hover:text-white transition-colors">
+            <button onClick={toggleFullscreen} className="shrink-0 text-white/70 hover:text-white transition-colors drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
               <Maximize size={16} />
             </button>
           </div>
