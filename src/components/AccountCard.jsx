@@ -23,6 +23,7 @@ function formatTime(sec) {
 function GlassPlayer({ src, poster, title, status }) {
   const containerRef = useRef(null);
   const videoRef = useRef(null);
+  const canvasRef = useRef(null);
   const inputRef = useRef(null);
   const volumeRef = useRef(null);
   const [playing, setPlaying] = useState(false);
@@ -168,6 +169,28 @@ function GlassPlayer({ src, poster, title, status }) {
     return () => clearTimeout(hideTimer.current);
   }, []);
 
+  // Canvas blur capture for glass controls
+  useEffect(() => {
+    const v = videoRef.current;
+    const canvas = canvasRef.current;
+    if (!v || !canvas) return;
+
+    const ctx = canvas.getContext("2d");
+    let animId;
+
+    const draw = () => {
+      if (v.readyState >= 2) {
+        canvas.width = v.videoWidth || 640;
+        canvas.height = v.videoHeight || 360;
+        ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+      }
+      animId = requestAnimationFrame(draw);
+    };
+
+    draw();
+    return () => cancelAnimationFrame(animId);
+  }, [src]);
+
   const inputValue = (currentTime / (duration || 1)) * 1000;
   const isAvailable = status === "В наличии";
 
@@ -192,15 +215,11 @@ function GlassPlayer({ src, poster, title, status }) {
         className="absolute inset-0 w-full h-full object-cover"
       />
 
-      {/* Blurred video layer for glass effect */}
-      <div className="absolute bottom-0 left-0 right-0 h-28 overflow-hidden pointer-events-none z-20">
-        <video
-          src={src}
-          preload="metadata"
-          playsInline
-          muted
-          className="absolute bottom-0 left-1/2 w-full h-full object-cover blur-xl opacity-60 scale-110"
-          style={{ transform: "translateX(-50%) translateY(30%)" }}
+      {/* Canvas blur background for controls */}
+      <div className="absolute bottom-0 left-0 right-0 h-16 overflow-hidden pointer-events-none z-20">
+        <canvas
+          ref={canvasRef}
+          className="absolute bottom-0 left-0 w-full h-full object-cover blur-xl scale-110 opacity-70"
         />
       </div>
 
