@@ -186,6 +186,16 @@ function GlassPlayer({ src, poster, title, status }) {
       }
       if (v.readyState >= 2) {
         ctx.drawImage(v, 0, 0, canvas.width, canvas.height);
+
+        // Gradient mask: dense left → transparent right
+        const grad = ctx.createLinearGradient(0, 0, canvas.width, 0);
+        grad.addColorStop(0, "rgba(0,0,0,1)");
+        grad.addColorStop(0.4, "rgba(0,0,0,0.8)");
+        grad.addColorStop(1, "rgba(0,0,0,0)");
+        ctx.globalCompositeOperation = "destination-in";
+        ctx.fillStyle = grad;
+        ctx.fillRect(0, 0, canvas.width, canvas.height);
+        ctx.globalCompositeOperation = "source-over";
       }
       rafId.current = requestAnimationFrame(draw);
     };
@@ -275,10 +285,10 @@ function GlassPlayer({ src, poster, title, status }) {
             ref={canvasRef}
             width={160}
             height={40}
-            className="absolute inset-0 w-full h-full object-cover filter blur-[24px] scale-125 opacity-95 pointer-events-none"
+            className="absolute inset-0 w-full h-full object-cover filter blur-[28px] scale-[1.3] opacity-95 pointer-events-none"
           />
-          {/* Dark tint */}
-          <div className="absolute inset-0 bg-black/20 pointer-events-none" />
+          {/* Gradient tint: dense left → transparent right */}
+          <div className="absolute inset-0 bg-gradient-to-r from-black/40 to-transparent pointer-events-none" />
           {/* Content */}
           <div className="relative z-10 flex items-center gap-2 px-3 py-2">
             <button onClick={togglePlay} className="shrink-0 text-white hover:text-white/80 transition-colors drop-shadow-[0_1px_2px_rgba(0,0,0,0.8)]">
