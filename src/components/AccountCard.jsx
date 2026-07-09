@@ -237,9 +237,11 @@ function GlassPlayer({ src, poster, title, status }) {
         </div>
       </div>
 
-      {/* Title with blur background */}
+      {/* Title with blur background — syncs with controls */}
       {title && (
-        <div className="absolute bottom-20 left-3 z-30">
+        <div className={`absolute left-3 z-30 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${
+          showControls ? "bottom-20 opacity-100" : "bottom-3 opacity-90"
+        }`}>
           <div className="rounded-lg bg-black/40 backdrop-blur-xl border border-white/10 px-2.5 py-1 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
             <span className="text-sm font-bold text-white tracking-wide" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>
               {title}
@@ -303,7 +305,7 @@ function GlassPlayer({ src, poster, title, status }) {
 
               {showVolume && (
                 <div
-                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 flex flex-col items-center p-2.5 rounded-xl border border-white/10 bg-black/60 backdrop-blur-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)]"
+                  className="absolute bottom-full left-1/2 -translate-x-1/2 mb-3 flex flex-col items-center p-2.5 rounded-xl border border-white/10 bg-black/60 backdrop-blur-lg shadow-[0_8px_24px_rgba(0,0,0,0.6)] origin-bottom animate-[slideUp_0.3s_cubic-bezier(0.4,0,0.2,1)]"
                   onMouseEnter={() => clearTimeout(volumeTimer.current)}
                   onMouseLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}
                 >
