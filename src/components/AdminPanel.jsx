@@ -2,6 +2,7 @@ import { useState, useEffect } from "react";
 import { Shield, Plus, List, Pencil, Trash2, ArrowLeft, Check } from "lucide-react";
 import { getAccounts, addAccount, updateAccount, deleteAccount, uploadVideo } from "../api";
 
+const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 const INPUT =
   "w-full rounded-xl bg-[#0A0A0A] border border-white/10 px-4 py-3 text-sm text-white placeholder-neutral-600 outline-none focus:border-white/30 transition-colors";
 
@@ -134,7 +135,14 @@ function ListScreen({ onEdit, onAdd, onAccountsChanged }) {
         <div className="space-y-2">
           {accounts.map((a) => (
             <div key={a.id} className="flex items-center gap-3 rounded-xl bg-[#1A1A1A] border border-white/5 p-3">
-              <img src={a.image_url || "/placeholder.svg"} alt="" className="h-12 w-12 rounded-lg object-cover bg-neutral-800 shrink-0" />
+              {a.image_url && a.image_url !== "/placeholder.svg" ? (
+                <img src={a.image_url} alt="" className="h-12 w-12 rounded-lg object-cover bg-neutral-800 shrink-0" />
+              ) : a.video_url ? (
+                <video src={API_URL + a.video_url + "#t=0.001"} preload="metadata" playsInline muted
+                  className="h-12 w-12 rounded-lg object-cover bg-neutral-800 shrink-0" />
+              ) : (
+                <img src="/placeholder.svg" alt="" className="h-12 w-12 rounded-lg object-cover bg-neutral-800 shrink-0" />
+              )}
               <div className="flex-1 min-w-0">
                 <p className="text-sm font-bold text-white truncate">{a.title}</p>
                 <p className="text-[10px] text-neutral-500 truncate">
