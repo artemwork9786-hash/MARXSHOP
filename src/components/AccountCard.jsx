@@ -222,7 +222,7 @@ function GlassPlayer({ src, poster, title, status }) {
       {/* Title with blur background */}
       {title && (
         <div className="absolute bottom-14 left-3 z-30">
-          <div className="rounded-lg bg-black/40 backdrop-blur-md px-3 py-1.5 border border-white/10">
+          <div className="rounded-lg bg-black/40 backdrop-blur-md px-1.5 border border-white/10">
             <span className="text-sm font-bold text-white tracking-wide">{title}</span>
           </div>
         </div>
@@ -336,7 +336,7 @@ export default function AccountCard({ account, currency, rates, onRent }) {
             }`}>{account.status}</div>
           </div>
           <div className="absolute bottom-14 left-3 z-30">
-            <div className="rounded-lg bg-black/40 backdrop-blur-md px-3 py-1.5 border border-white/10">
+            <div className="rounded-lg bg-black/40 backdrop-blur-md px-1.5 border border-white/10">
               <span className="text-sm font-bold text-white tracking-wide">{account.title}</span>
             </div>
           </div>
