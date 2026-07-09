@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect, useCallback } from "react";
-import { Play, Pause, Maximize } from "lucide-react";
+import { Play, Pause, Maximize, Loader } from "lucide-react";
 import { CURRENCIES } from "../data/accounts";
 
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
@@ -23,12 +23,14 @@ function formatTime(sec) {
 function GlassPlayer({ src, poster }) {
   const containerRef = useRef(null);
   const videoRef = useRef(null);
-  const progressRef = useRef(null);
   const [playing, setPlaying] = useState(false);
   const [currentTime, setCurrentTime] = useState(0);
   const [duration, setDuration] = useState(0);
   const [showControls, setShowControls] = useState(true);
+  const [isLoading, setIsLoading] = useState(false);
+  const [seeking, setSeeking] = useState(false);
   const hideTimer = useRef(null);
+  const currentTimeRef = useRef(0);
 
   const progress = duration > 0 ? (currentTime / duration) * 100 : 0;
 
@@ -39,13 +41,27 @@ function GlassPlayer({ src, poster }) {
     else { v.pause(); setPlaying(false); }
   }, []);
 
-  const seek = useCallback((e) => {
-    const bar = progressRef.current;
+  const onSeekInput = useCallback((e) => {
     const v = videoRef.current;
-    if (!bar || !v || !v.duration) return;
-    const rect = bar.getBoundingClientRect();
-    const pct = Math.max(0, Math.min(1, (e.clientX - rect.left) / rect.width));
+    if (!v || !v.duration) return;
+    const val = Number(e.target.value);
+    const pct = val / 1000;
+    currentTimeRef.current = pct * v.duration;
+    setCurrentTime(currentTimeRef.current);
+  }, []);
+
+  const onSeekStart = useCallback(() => {
+    setSeeking(true);
+    setIsLoading(true);
+  }, []);
+
+  const onSeekEnd = useCallback((e) => {
+    const v = videoRef.current;
+    if (!v || !v.duration) return;
+    const val = Number(e.target.value);
+    const pct = val / 1000;
     v.currentTime = pct * v.duration;
+    setSeeking(false);
   }, []);
 
   const toggleFullscreen = useCallback(() => {
@@ -61,24 +77,47 @@ function GlassPlayer({ src, poster }) {
   useEffect(() => {
     const v = videoRef.current;
     if (!v) return;
-    const onTime = () => setCurrentTime(v.currentTime);
-    const onDur = () => setDuration(v.duration);
-    const onEnd = () => { setPlaying(false); setShowControls(true); };
+
+    const onTimeUpdate = () => {
+      if (!seeking) {
+        currentTimeRef.current = v.currentTime;
+        setCurrentTime(v.currentTime);
+      }
+    };
+    const onLoadedMetadata = () => setDuration(v.duration);
+    const onEnded = () => { setPlaying(false); setShowControls(true); setIsLoading(false); };
     const onPlay = () => setPlaying(true);
     const onPause = () => setPlaying(false);
-    v.addEventListener("timeupdate", onTime);
-    v.addEventListener("loadedmetadata", onDur);
-    v.addEventListener("ended", onEnd);
+    const onWaiting = () => setIsLoading(true);
+    const onCanPlay = () => setIsLoading(false);
+    const onPlaying = () => setIsLoading(false);
+    const onSeeking = () => setIsLoading(true);
+    const onSeeked = () => setIsLoading(false);
+
+    v.addEventListener("timeupdate", onTimeUpdate);
+    v.addEventListener("loadedmetadata", onLoadedMetadata);
+    v.addEventListener("ended", onEnded);
     v.addEventListener("play", onPlay);
     v.addEventListener("pause", onPause);
+    v.addEventListener("waiting", onWaiting);
+    v.addEventListener("canplay", onCanPlay);
+    v.addEventListener("playing", onPlaying);
+    v.addEventListener("seeking", onSeeking);
+    v.addEventListener("seeked", onSeeked);
+
     return () => {
-      v.removeEventListener("timeupdate", onTime);
-      v.removeEventListener("loadedmetadata", onDur);
-      v.removeEventListener("ended", onEnd);
+      v.removeEventListener("timeupdate", onTimeUpdate);
+      v.removeEventListener("loadedmetadata", onLoadedMetadata);
+      v.removeEventListener("ended", onEnded);
       v.removeEventListener("play", onPlay);
       v.removeEventListener("pause", onPause);
+      v.removeEventListener("waiting", onWaiting);
+      v.removeEventListener("canplay", onCanPlay);
+      v.removeEventListener("playing", onPlaying);
+      v.removeEventListener("seeking", onSeeking);
+      v.removeEventListener("seeked", onSeeked);
     };
-  }, [src]);
+  }, [src, seeking]);
 
   const resetHideTimer = useCallback(() => {
     setShowControls(true);
@@ -98,7 +137,7 @@ function GlassPlayer({ src, poster }) {
       ref={containerRef}
       className="relative h-48 w-full rounded-t-2xl overflow-hidden bg-black cursor-pointer"
       onClick={(e) => {
-        if (e.target.closest("[data-glass-controls]")) return;
+        if (e.target.closest("[data-glass-controls]") || e.target.closest("input[type=range]")) return;
         togglePlay();
         resetHideTimer();
       }}
@@ -116,10 +155,19 @@ function GlassPlayer({ src, poster }) {
       />
 
       {/* Center play button (shown when paused) */}
-      {!playing && (
+      {!playing && !isLoading && (
         <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
           <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 backdrop-blur-md border border-white/20 shadow-xl shadow-black/40">
             <Play size={24} className="text-white ml-1" fill="white" />
+          </div>
+        </div>
+      )}
+
+      {/* Loading spinner */}
+      {isLoading && (
+        <div className="absolute inset-0 z-10 flex items-center justify-center pointer-events-none">
+          <div className="flex h-14 w-14 items-center justify-center rounded-full bg-black/50 backdrop-blur-md border border-white/20 shadow-xl shadow-black/40">
+            <Loader size={24} className="text-white animate-spin" />
           </div>
         </div>
       )}
@@ -160,21 +208,23 @@ function GlassPlayer({ src, poster }) {
               {formatTime(currentTime)} / {formatTime(duration)}
             </span>
 
-            {/* Progress bar */}
-            <div
-              ref={progressRef}
-              className="relative flex-1 h-1 cursor-pointer rounded-full bg-white/15 group/track"
-              onClick={seek}
-            >
-              <div
-                className="absolute top-0 left-0 h-full rounded-full bg-white transition-[width] duration-100"
-                style={{ width: `${progress}%` }}
-              />
-              <div
-                className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] opacity-0 group-hover/track:opacity-100 transition-opacity duration-200"
-                style={{ left: `calc(${progress}% - 6px)` }}
-              />
-            </div>
+            {/* Range input */}
+            <input
+              type="range"
+              min="0"
+              max="1000"
+              value={seeking || !duration ? (currentTime / (duration || 1)) * 1000 : (currentTime / duration) * 1000}
+              onInput={onSeekInput}
+              onMouseDown={onSeekStart}
+              onMouseUp={onSeekEnd}
+              onTouchStart={onSeekStart}
+              onTouchEnd={onSeekEnd}
+              className="flex-1 h-1 appearance-none bg-transparent cursor-pointer group/range
+                [&::-webkit-slider-runnable-track]:h-1 [&::-webkit-slider-runnable-track]:rounded-full [&::-webkit-slider-runnable-track]:bg-white/15
+                [&::-webkit-slider-thumb]:appearance-none [&::-webkit-slider-thumb]:h-3 [&::-webkit-slider-thumb]:w-3 [&::-webkit-slider-thumb]:rounded-full [&::-webkit-slider-thumb]:bg-white [&::-webkit-slider-thumb]:shadow-[0_0_6px_rgba(255,255,255,0.4)] [&::-webkit-slider-thumb]:mt-[-5px]
+                [&::-moz-range-track]:h-1 [&::-moz-range-track]:rounded-full [&::-moz-range-track]:bg-white/15 [&::-moz-range-track]:border-none
+                [&::-moz-range-thumb]:h-3 [&::-moz-range-thumb]:w-3 [&::-moz-range-thumb]:rounded-full [&::-moz-range-thumb]:bg-white [&::-moz-range-thumb]:border-none [&::-moz-range-thumb]:shadow-[0_0_6px_rgba(255,255,255,0.4)]"
+            />
 
             {/* Fullscreen */}
             <button
