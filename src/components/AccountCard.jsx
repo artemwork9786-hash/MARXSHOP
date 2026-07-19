@@ -29,6 +29,7 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
   const volumeBtnRef = useRef(null);
   const volumePopoverRef = useRef(null);
   const [volumeBtnRect, setVolumeBtnRect] = useState(null);
+  const [showAnimated, setShowAnimated] = useState(false);
   const [playing, setPlaying] = useState(false);
   const wasPlayingRef = useRef(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -225,7 +226,7 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
   }, [isFullscreen]);
 
   useEffect(() => {
-    if (!showVolume || !volumeBtnRef.current) { setVolumeBtnRect(null); return; }
+    if (!showVolume || !volumeBtnRef.current) { setVolumeBtnRect(null); setShowAnimated(false); return; }
     const update = () => {
       const btn = volumeBtnRef.current;
       if (!btn) return;
@@ -234,6 +235,7 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
         left: btnRect.left + btnRect.width / 2 - 14,
         top: btnRect.top - 90,
       });
+      requestAnimationFrame(() => setShowAnimated(true));
     };
     const timer = setTimeout(update, 50);
     window.addEventListener("resize", update);
@@ -331,7 +333,7 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
                     </button>
                   </div>
                   {volumeBtnRect && createPortal(
-                    <div ref={volumePopoverRef} className="fixed z-[9999] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-bottom" style={{ left: volumeBtnRect.left, top: volumeBtnRect.top, opacity: showVolume ? 1 : 0, transform: showVolume ? "translateY(0) scale(1)" : "translateY(8px) scale(0.95)", pointerEvents: showVolume ? "auto" : "none" }} onPointerEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }} onPointerLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}>
+                    <div ref={volumePopoverRef} className="fixed z-[9999] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-bottom" style={{ left: volumeBtnRect.left, top: volumeBtnRect.top, opacity: showAnimated ? 1 : 0, transform: showAnimated ? "translateY(0) scale(1)" : "translateY(8px) scale(0.95)", pointerEvents: showAnimated ? "auto" : "none" }} onPointerEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }} onPointerLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}>
                       <div className="flex flex-col items-center p-1.5 rounded-lg bg-black/63 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
                         <div ref={volumeRef} className="relative h-16 w-5 cursor-pointer touch-none select-none" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setVolumeDragging(true); volumeRef.current?.setPointerCapture(e.pointerId); }} onPointerMove={(e) => { if (!volumeDragging) return; e.preventDefault(); setVolumeFromY(e.clientY); }} onPointerUp={(e) => { setVolumeDragging(false); volumeRef.current?.releasePointerCapture(e.pointerId); }}>
                           <div className="absolute bottom-[3px] top-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white/15 pointer-events-none" />
@@ -409,7 +411,7 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
                   </button>
                 </div>
                 {volumeBtnRect && createPortal(
-                  <div ref={volumePopoverRef} className="fixed z-[9999] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-bottom" style={{ left: volumeBtnRect.left, top: volumeBtnRect.top, opacity: showVolume ? 1 : 0, transform: showVolume ? "translateY(0) scale(1)" : "translateY(8px) scale(0.95)", pointerEvents: showVolume ? "auto" : "none" }} onPointerEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }} onPointerLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}>
+                  <div ref={volumePopoverRef} className="fixed z-[9999] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-bottom" style={{ left: volumeBtnRect.left, top: volumeBtnRect.top, opacity: showAnimated ? 1 : 0, transform: showAnimated ? "translateY(0) scale(1)" : "translateY(8px) scale(0.95)", pointerEvents: showAnimated ? "auto" : "none" }} onPointerEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }} onPointerLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}>
                     <div className="flex flex-col items-center p-1.5 rounded-lg bg-black/63 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
                       <div ref={volumeRef} className="relative h-16 w-5 cursor-pointer touch-none select-none" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setVolumeDragging(true); volumeRef.current?.setPointerCapture(e.pointerId); }} onPointerMove={(e) => { if (!volumeDragging) return; e.preventDefault(); setVolumeFromY(e.clientY); }} onPointerUp={(e) => { setVolumeDragging(false); volumeRef.current?.releasePointerCapture(e.pointerId); }}>
                         <div className="absolute bottom-[3px] top-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white/15 pointer-events-none" />
