@@ -406,14 +406,16 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
   const dropdownRef = useRef(null);
   const tagsRef = useRef(null);
   const dragState = useRef({ isDragging: false, startX: 0, scrollLeft: 0 });
-  const [scrollProgress, setScrollProgress] = useState(0);
+  const [maskStyle, setMaskStyle] = useState("");
 
   const updateFades = () => {
     const el = tagsRef.current;
     if (!el) return;
     const maxScroll = el.scrollWidth - el.clientWidth;
-    if (maxScroll <= 0) { setScrollProgress(0); return; }
-    setScrollProgress(Math.min(1, Math.max(0, el.scrollLeft / maxScroll)));
+    if (maxScroll <= 0) { setMaskStyle(""); return; }
+    const left = Math.min(50, el.scrollLeft);
+    const right = Math.min(50, maxScroll - el.scrollLeft);
+    setMaskStyle(`linear-gradient(to right, transparent 0%, black ${left}px, black calc(100% - ${right}px), transparent 100%)`);
   };
 
   const displayPrice = isRent && selectedTerm ? selectedTerm.price : account.price;
@@ -474,8 +476,8 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
                 style={{
                   scrollbarWidth: "none",
                   msOverflowStyle: "none",
-                  maskImage: `linear-gradient(to right, transparent 0%, black ${scrollProgress * 50}px, black calc(100% - ${(1 - scrollProgress) * 50}px), transparent 100%)`,
-                  WebkitMaskImage: `linear-gradient(to right, transparent 0%, black ${scrollProgress * 50}px, black calc(100% - ${(1 - scrollProgress) * 50}px), transparent 100%)`,
+                  maskImage: maskStyle || "none",
+                  WebkitMaskImage: maskStyle || "none",
                 }}
                 onMouseDown={(e) => {
                   const el = tagsRef.current;
