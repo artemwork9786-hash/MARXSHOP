@@ -518,7 +518,7 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
             <>
               <div className="relative" ref={dropdownRef}>
                 <button onClick={() => setShowTerms(!showTerms)} className="flex items-center gap-1.5 rounded-lg bg-white/[0.03] backdrop-blur-md border border-white/10 px-3 py-2 transition-all hover:border-white/10">
-                  <span className="text-sm font-bold text-white">{selectedTerm ? `${formattedPrice} ${curr.symbol}` : "—"}</span>
+                  <span className="text-sm font-bold text-white">{selectedTerm ? <>{selectedTerm.label} <span className="text-neutral-400 font-normal">{formattedPrice} {curr.symbol}</span></> : "—"}</span>
                   <ChevronDown size={14} className={`text-white/50 transition-transform duration-200 ${showTerms ? "rotate-180" : ""}`} />
                 </button>
                 {showTerms && account.rentTerms?.length > 0 && (
