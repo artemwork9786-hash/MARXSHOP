@@ -474,8 +474,8 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
                 style={{
                   scrollbarWidth: "none",
                   msOverflowStyle: "none",
-                  maskImage: `linear-gradient(to right, transparent 0%, black ${50 - scrollProgress * 50}px, black calc(100% - ${50 - (1 - scrollProgress) * 50}px), transparent 100%)`,
-                  WebkitMaskImage: `linear-gradient(to right, transparent 0%, black ${50 - scrollProgress * 50}px, black calc(100% - ${50 - (1 - scrollProgress) * 50}px), transparent 100%)`,
+                  maskImage: `linear-gradient(to right, transparent 0%, black ${scrollProgress * 50}px, black calc(100% - ${(1 - scrollProgress) * 50}px), transparent 100%)`,
+                  WebkitMaskImage: `linear-gradient(to right, transparent 0%, black ${scrollProgress * 50}px, black calc(100% - ${(1 - scrollProgress) * 50}px), transparent 100%)`,
                 }}
                 onMouseDown={(e) => {
                   const el = tagsRef.current;
