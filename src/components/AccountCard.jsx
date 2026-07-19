@@ -468,7 +468,7 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
       {isRent && account.tags?.length > 0 && (
         <div className="relative bg-[#1A1A1A] px-4 pt-3 pb-2">
           <div className="flex items-center gap-4">
-            <div className="flex-1 relative">
+            <div className="flex-1 relative overflow-hidden">
               <div
                 ref={tagsRef}
                 className="flex items-center gap-2 overflow-x-auto cursor-grab active:cursor-grabbing"
