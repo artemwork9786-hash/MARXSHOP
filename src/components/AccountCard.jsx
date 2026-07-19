@@ -193,7 +193,7 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
     clearTimeout(hideTimer.current);
     hideTimer.current = setTimeout(() => {
       if (videoRef.current && !videoRef.current.paused) setShowControls(false);
-    }, 2000);
+    }, 1000);
   }, []);
 
   useEffect(() => {
