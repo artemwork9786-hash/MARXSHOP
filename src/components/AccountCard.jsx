@@ -473,7 +473,12 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
                 ref={tagsRef}
                 className="flex items-center gap-2 overflow-x-auto cursor-grab active:cursor-grabbing"
                 onScroll={updateFades}
-                style={{ scrollbarWidth: "none", msOverflowStyle: "none" }}
+                style={{
+                  scrollbarWidth: "none",
+                  msOverflowStyle: "none",
+                  maskImage: "linear-gradient(to right, transparent 0%, black 50px, black calc(100% - 50px), transparent 100%)",
+                  WebkitMaskImage: "linear-gradient(to right, transparent 0%, black 50px, black calc(100% - 50px), transparent 100%)",
+                }}
                 onMouseDown={(e) => {
                   const el = tagsRef.current;
                   if (!el) return;
@@ -496,8 +501,6 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
                   <span key={i} className="shrink-0 rounded-lg bg-white/[0.06] border border-white/[0.08] px-3 py-1.5 text-[11px] font-medium text-white/70 whitespace-nowrap select-none">{tag}</span>
                 ))}
               </div>
-              <div className="pointer-events-none absolute inset-y-0 left-0 w-[60px] bg-gradient-to-r from-[#0f0f0f]/80 to-transparent backdrop-blur-[2px] z-10" />
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-[60px] bg-gradient-to-l from-[#0f0f0f]/80 to-transparent backdrop-blur-[2px] z-10" />
             </div>
             {account.description?.content && (
               <button onClick={() => setShowExtraInfo(true)} className="shrink-0 rounded-lg bg-white/[0.04] border border-white/[0.1] backdrop-blur-sm px-3 py-1.5 text-[11px] font-semibold text-white/60 hover:text-white/80 hover:bg-white/[0.07] hover:border-white/[0.15] transition-all whitespace-nowrap select-none" style={{ transform: "translateZ(0)", willChange: "backdrop-filter" }}>Доп. инфо</button>
