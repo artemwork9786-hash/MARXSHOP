@@ -29,6 +29,17 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
   const volumeBtnRef = useRef(null);
   const volumePopoverRef = useRef(null);
   const [volumeBtnRect, setVolumeBtnRect] = useState(null);
+
+  const getAbsolutePosition = (el) => {
+    let left = 0, top = 0;
+    let current = el;
+    while (current) {
+      left += current.offsetLeft - current.scrollLeft;
+      top += current.offsetTop - current.scrollTop;
+      current = current.offsetParent;
+    }
+    return { left: left - window.scrollX, top: top - window.scrollY };
+  };
   const [playing, setPlaying] = useState(false);
   const wasPlayingRef = useRef(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -228,12 +239,9 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
     if (!showVolume || !volumeBtnRef.current) { setVolumeBtnRect(null); return; }
     let raf;
     const update = () => {
+      const pos = getAbsolutePosition(volumeBtnRef.current);
       const rect = volumeBtnRef.current.getBoundingClientRect();
-      const vp = window.visualViewport || { offsetLeft: 0, offsetTop: 0 };
-      setVolumeBtnRect({
-        left: rect.left + vp.offsetLeft + rect.width / 2 - 10,
-        top: rect.top + vp.offsetTop - 80,
-      });
+      setVolumeBtnRect({ left: pos.left + rect.width / 2 - 10, top: pos.top - 80 });
     };
     raf = requestAnimationFrame(update);
     window.addEventListener("resize", update);
