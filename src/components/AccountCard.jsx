@@ -465,8 +465,9 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
         <img src={account.image_url || `${videoSrc}#t=0.001`} alt="" className="absolute inset-0 w-full h-full object-cover z-10" />
       )}
 
-      {isRent && account.tags?.length > 0 && (
-        <div className="relative bg-[#1A1A1A] px-4 pt-3 pb-2">
+      <div className="overflow-hidden rounded-b-2xl">
+        {isRent && account.tags?.length > 0 && (
+          <div className="relative bg-[#1A1A1A] px-4 pt-3 pb-2">
           <div className="flex items-center gap-4">
             <div className="flex-1 relative overflow-hidden">
               <div
@@ -538,6 +539,7 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
             </>
           )}
         </div>
+      </div>
       </div>
 
       {showExtraInfo && (
