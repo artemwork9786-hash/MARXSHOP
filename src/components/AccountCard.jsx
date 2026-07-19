@@ -332,16 +332,20 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
                       {muted || volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
                     </button>
                   </div>
-                  {createPortal(
-                    <div ref={volumePopoverRef} className="fixed z-[9999] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-bottom" style={{ left: showAnimated && volumeBtnRect ? volumeBtnRect.left : -9999, top: showAnimated && volumeBtnRect ? volumeBtnRect.top : -9999, opacity: showAnimated ? 1 : 0, transform: showAnimated ? "translateY(0) scale(1)" : "translateY(8px) scale(0.95)", pointerEvents: showAnimated ? "auto" : "none" }} onPointerEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }} onPointerLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}>
-                      <div className="flex flex-col items-center p-1.5 rounded-lg bg-black/63 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
-                        <div ref={volumeRef} className="relative h-16 w-5 cursor-pointer touch-none select-none" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setVolumeDragging(true); volumeRef.current?.setPointerCapture(e.pointerId); }} onPointerMove={(e) => { if (!volumeDragging) return; e.preventDefault(); setVolumeFromY(e.clientY); }} onPointerUp={(e) => { setVolumeDragging(false); volumeRef.current?.releasePointerCapture(e.pointerId); }}>
-                          <div className="absolute bottom-[3px] top-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white/15 pointer-events-none" />
-                          <div className="absolute bottom-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white pointer-events-none" style={{ height: `calc(${(muted ? 0 : volume) * 100}% - 6px)` }} />
-                          <div className="absolute left-1/2 -translate-x-1/2 h-[7px] w-[7px] rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none" style={{ bottom: `calc(${(muted ? 0 : volume)} * 50px + 3px)` }} />
+                  {volumeBtnRect && createPortal(
+                    <>
+                      <div ref={volumePopoverRef} className="fixed z-[9999] transition-opacity duration-300" style={{ left: volumeBtnRect.left, top: volumeBtnRect.top, opacity: showAnimated ? 1 : 0, pointerEvents: showAnimated ? "auto" : "none" }} onPointerEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }} onPointerLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}>
+                        <div className="transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-bottom" style={{ transform: showAnimated ? "translateY(0) scale(1)" : "translateY(8px) scale(0.95)" }}>
+                          <div className="flex flex-col items-center p-1.5 rounded-lg bg-black/63 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
+                            <div ref={volumeRef} className="relative h-16 w-5 cursor-pointer touch-none select-none" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setVolumeDragging(true); volumeRef.current?.setPointerCapture(e.pointerId); }} onPointerMove={(e) => { if (!volumeDragging) return; e.preventDefault(); setVolumeFromY(e.clientY); }} onPointerUp={(e) => { setVolumeDragging(false); volumeRef.current?.releasePointerCapture(e.pointerId); }}>
+                              <div className="absolute bottom-[3px] top-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white/15 pointer-events-none" />
+                              <div className="absolute bottom-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white pointer-events-none" style={{ height: `calc(${(muted ? 0 : volume) * 100}% - 6px)` }} />
+                              <div className="absolute left-1/2 -translate-x-1/2 h-[7px] w-[7px] rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none" style={{ bottom: `calc(${(muted ? 0 : volume)} * 50px + 3px)` }} />
+                            </div>
+                          </div>
                         </div>
                       </div>
-                    </div>,
+                    </>,
                     document.body
                   )}
                   <button onClick={toggleFullscreen} className="shrink-0 text-white/70 hover:text-white transition-colors">
@@ -410,16 +414,20 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
                     {muted || volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
                   </button>
                 </div>
-                {createPortal(
-                  <div ref={volumePopoverRef} className="fixed z-[9999] transition-all duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-bottom" style={{ left: showAnimated && volumeBtnRect ? volumeBtnRect.left : -9999, top: showAnimated && volumeBtnRect ? volumeBtnRect.top : -9999, opacity: showAnimated ? 1 : 0, transform: showAnimated ? "translateY(0) scale(1)" : "translateY(8px) scale(0.95)", pointerEvents: showAnimated ? "auto" : "none" }} onPointerEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }} onPointerLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}>
-                    <div className="flex flex-col items-center p-1.5 rounded-lg bg-black/63 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
-                      <div ref={volumeRef} className="relative h-16 w-5 cursor-pointer touch-none select-none" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setVolumeDragging(true); volumeRef.current?.setPointerCapture(e.pointerId); }} onPointerMove={(e) => { if (!volumeDragging) return; e.preventDefault(); setVolumeFromY(e.clientY); }} onPointerUp={(e) => { setVolumeDragging(false); volumeRef.current?.releasePointerCapture(e.pointerId); }}>
-                        <div className="absolute bottom-[3px] top-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white/15 pointer-events-none" />
-                        <div className="absolute bottom-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white pointer-events-none" style={{ height: `calc(${(muted ? 0 : volume) * 100}% - 6px)` }} />
-                        <div className="absolute left-1/2 -translate-x-1/2 h-[7px] w-[7px] rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none" style={{ bottom: `calc(${(muted ? 0 : volume)} * 50px + 3px)` }} />
+                {volumeBtnRect && createPortal(
+                  <>
+                    <div ref={volumePopoverRef} className="fixed z-[9999] transition-opacity duration-300" style={{ left: volumeBtnRect.left, top: volumeBtnRect.top, opacity: showAnimated ? 1 : 0, pointerEvents: showAnimated ? "auto" : "none" }} onPointerEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }} onPointerLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}>
+                      <div className="transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-bottom" style={{ transform: showAnimated ? "translateY(0) scale(1)" : "translateY(8px) scale(0.95)" }}>
+                        <div className="flex flex-col items-center p-1.5 rounded-lg bg-black/63 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
+                          <div ref={volumeRef} className="relative h-16 w-5 cursor-pointer touch-none select-none" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setVolumeDragging(true); volumeRef.current?.setPointerCapture(e.pointerId); }} onPointerMove={(e) => { if (!volumeDragging) return; e.preventDefault(); setVolumeFromY(e.clientY); }} onPointerUp={(e) => { setVolumeDragging(false); volumeRef.current?.releasePointerCapture(e.pointerId); }}>
+                            <div className="absolute bottom-[3px] top-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white/15 pointer-events-none" />
+                            <div className="absolute bottom-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white pointer-events-none" style={{ height: `calc(${(muted ? 0 : volume) * 100}% - 6px)` }} />
+                            <div className="absolute left-1/2 -translate-x-1/2 h-[7px] w-[7px] rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none" style={{ bottom: `calc(${(muted ? 0 : volume)} * 50px + 3px)` }} />
+                          </div>
+                        </div>
                       </div>
                     </div>
-                  </div>,
+                  </>,
                   document.body
                 )}
                 <button onClick={toggleFullscreen} className="shrink-0 text-white/70 hover:text-white transition-colors">
