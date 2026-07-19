@@ -226,14 +226,16 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
 
   useEffect(() => {
     if (!showVolume || !volumeBtnRef.current) { setVolumeBtnRect(null); return; }
+    let raf;
     const update = () => {
       const rect = volumeBtnRef.current.getBoundingClientRect();
-      setVolumeBtnRect({ left: rect.left + rect.width / 2 - 10, top: rect.top - 70 });
+      setVolumeBtnRect({ left: rect.left + rect.width / 2 - 10, top: rect.top - 72 });
     };
-    update();
+    raf = requestAnimationFrame(update);
     window.addEventListener("resize", update);
     window.addEventListener("scroll", update, true);
     return () => {
+      cancelAnimationFrame(raf);
       window.removeEventListener("resize", update);
       window.removeEventListener("scroll", update, true);
     };
