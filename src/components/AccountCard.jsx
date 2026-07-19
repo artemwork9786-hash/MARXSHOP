@@ -503,8 +503,6 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
               <button onClick={() => setShowExtraInfo(true)} className="shrink-0 rounded-lg bg-white/[0.04] border border-white/[0.1] backdrop-blur-sm px-3 py-1.5 text-[11px] font-semibold text-white/60 hover:text-white/80 hover:bg-white/[0.07] hover:border-white/[0.15] transition-all whitespace-nowrap select-none" style={{ transform: "translateZ(0)", willChange: "backdrop-filter" }}>Доп. инфо</button>
             )}
           </div>
-          <div className="pointer-events-none absolute top-0 bottom-0 left-4 w-3 z-20" style={{ background: "linear-gradient(to left, transparent 0%, #1A1A1A 100%)" }} />
-          <div className="pointer-events-none absolute top-0 bottom-0 right-0 w-3 z-20" style={{ background: "linear-gradient(to right, transparent 0%, #1A1A1A 100%)" }} />
         </div>
       )}
 
