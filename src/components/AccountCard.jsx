@@ -312,7 +312,7 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
         )}
       </div>
 
-      {isTransitioning && (
+      {isTransitioning && createPortal(
         <div
           className="fixed inset-0 pointer-events-none"
           style={{
@@ -323,7 +323,8 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
             WebkitBackdropFilter: `blur(${dimBlur}px) saturate(160%)`,
             backgroundColor: "rgba(0,0,0,0.92)",
           }}
-        />
+        />,
+        document.body
       )}
 
       {isFullscreen && createPortal(
