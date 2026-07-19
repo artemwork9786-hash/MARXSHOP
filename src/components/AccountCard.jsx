@@ -270,7 +270,7 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
               <div className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${isAvailable ? "bg-white text-black" : "bg-neutral-700 text-neutral-400"}`}>{status}</div>
             </div>
             {title && (
-              <div className="absolute left-3 z-30 transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]" style={{ transform: showControls ? "translateY(-40px)" : "translateY(0)" }}>
+              <div className="absolute left-3 bottom-3 z-30 transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]" style={{ transform: showControls ? "translateY(-40px)" : "translateY(0)" }}>
                 <div className="rounded-lg bg-black/50 backdrop-blur-md border border-white/20 px-2.5 py-1 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
                   <span className="text-sm font-bold text-white tracking-wide" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>{title}</span>
                 </div>
