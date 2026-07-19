@@ -284,7 +284,7 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
                     {playing ? <Pause size={16} fill="white" /> : <Play size={16} fill="white" />}
                   </button>
                   <span className="text-[11px] font-medium text-white/70 tabular-nums shrink-0 select-none">{formatTime(currentTime)} / {formatTime(duration)}</span>
-                  <div className="flex-1 mx-2 relative flex items-center h-8">
+                  <div className="flex-1 mx-2 relative flex items-center h-7">
                     <div className="absolute left-0 right-0 h-1 rounded-full pointer-events-none" style={{ background: `linear-gradient(to right, #ffffff ${progress}%, rgba(255,255,255,0.15) ${progress}%)` }} />
                     <div className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none" style={{ left: `calc(${progress}% - 6px)` }} />
                     <input ref={inputRef} type="range" min="0" max="1000" step="1" value={Math.round(inputValue)} onInput={handleInput} onMouseDown={handlePointerDown} onMouseUp={handlePointerUp} onTouchStart={handlePointerDown} onTouchEnd={handlePointerUp} className="absolute inset-0 w-full h-full appearance-none bg-transparent cursor-pointer opacity-0 z-10 m-0 p-0" style={{ WebkitAppearance: "none", MozAppearance: "none" }} />
@@ -359,7 +359,7 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
                   {playing ? <Pause size={16} fill="white" /> : <Play size={16} fill="white" />}
                 </button>
                 <span className="text-[11px] font-medium text-white/70 tabular-nums shrink-0 select-none">{formatTime(currentTime)} / {formatTime(duration)}</span>
-                <div className="flex-1 mx-2 relative flex items-center h-8">
+                <div className="flex-1 mx-2 relative flex items-center h-7">
                   <div className="absolute left-0 right-0 h-1 rounded-full pointer-events-none" style={{ background: `linear-gradient(to right, #ffffff ${progress}%, rgba(255,255,255,0.15) ${progress}%)` }} />
                   <div className="absolute top-1/2 -translate-y-1/2 h-3 w-3 rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none" style={{ left: `calc(${progress}% - 6px)` }} />
                   <input type="range" min="0" max="1000" step="1" value={Math.round(inputValue)} onInput={handleInput} onMouseDown={handlePointerDown} onMouseUp={handlePointerUp} onTouchStart={handlePointerDown} onTouchEnd={handlePointerUp} className="absolute inset-0 w-full h-full appearance-none bg-transparent cursor-pointer opacity-0 z-10 m-0 p-0" style={{ WebkitAppearance: "none", MozAppearance: "none" }} />
