@@ -525,8 +525,8 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
                   <div className="absolute bottom-full left-0 mb-2 border border-white/10 rounded-xl shadow-[0_8px_32px_rgba(0,0,0,0.7)] overflow-hidden min-w-[240px] max-h-60 overflow-y-auto" style={{ zIndex: 100, transform: "translateZ(0)", willChange: "transform", backdropFilter: "blur(24px) saturate(140%)", WebkitBackdropFilter: "blur(24px) saturate(140%)", backgroundColor: "rgba(0,0,0,0.6)", boxShadow: "inset 0 0 0 1px rgba(255,255,255,0.05), 0 8px 32px rgba(0,0,0,0.7)" }}>
                     {account.rentTerms.map((term, i) => (
                       <button key={i} onClick={() => { setSelectedTerm(term); setShowTerms(false); }} className={`w-full flex items-center justify-between px-4 py-2.5 text-left transition-all ${selectedTerm?.label === term.label ? "text-white border-l-2 border-l-white/40 bg-white/[0.06]" : "text-white/70 hover:bg-white/[0.04]"} ${i > 0 ? "border-t border-white/[0.06]" : ""}`}>
-                        <span className="text-sm truncate">{term.label}</span>
-                        <span className="text-sm font-bold whitespace-nowrap shrink-0">{convertPrice(term.price, currency, rates).toLocaleString("ru-RU")} {curr.symbol}</span>
+                        <span className="text-sm font-bold truncate">{term.label}</span>
+                        <span className="text-sm whitespace-nowrap shrink-0">{convertPrice(term.price, currency, rates).toLocaleString("ru-RU")} {curr.symbol}</span>
                       </button>
                     ))}
                   </div>
