@@ -1,4 +1,5 @@
 require("dotenv").config();
+console.log("[TOP] Server loading...");
 const express = require("express");
 const cors = require("cors");
 const path = require("path");
@@ -6,9 +7,14 @@ const fs = require("fs");
 const multer = require("multer");
 const storage = require("./lib/storage");
 const cryptoPay = require("./lib/crypto-pay");
+const { S3Client, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
+const Busboy = require("busboy");
+const crypto = require("crypto");
+const ycS3 = require("./lib/yc-s3");
 
 const app = express();
-const PORT = process.env.PORT || 5000;
+const PORT = process.env.PORT || 8080;
+const isServerless = process.env.NODE_ENV === "production" && !process.env.DATA_DIR;
 
 // ─── JSON file-based storage for accounts ────────────────────────────────────
 
@@ -44,6 +50,11 @@ function loadAccounts() {
       const raw = fs.readFileSync(PRODUCTS_FILE, "utf-8");
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed) && parsed.length > 0) {
+        parsed.forEach(a => {
+          if (!a.category) a.category = "sale";
+          if (!a.rentTerms) a.rentTerms = [];
+          if (!a.extraInfo) a.extraInfo = [];
+        });
         console.log(`[DATA] Loaded ${parsed.length} accounts from ${PRODUCTS_FILE}`);
         return parsed;
       }
@@ -105,23 +116,11 @@ function toRub(amount, fromCurrency) {
 
 // ─── CORS ────────────────────────────────────────────────────────────────────
 
-const allowedOrigins = [
-  "http://localhost:5173",
-  "http://localhost:3000",
-  "https://artemwork9786-hash.github.io",
-  "https://verykindandfriendlyguy.github.io",
-];
-
 app.use(
   cors({
-    origin(origin, cb) {
-      if (!origin || allowedOrigins.some((o) => origin.startsWith(o))) {
-        cb(null, true);
-      } else {
-        cb(null, true);
-      }
-    },
-    credentials: true,
+    origin: "*",
+    methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
+    allowedHeaders: ["Content-Type", "Authorization"],
   })
 );
 app.use((req, res, next) => {
@@ -131,9 +130,71 @@ app.use((req, res, next) => {
   res.set("Surrogate-Control", "no-store");
   next();
 });
+
+// ─── Video upload (BEFORE express.json to preserve multipart stream) ──────────
+
+app.post("/api/upload-video", (req, res) => { console.log("[UPLOAD-DBG] reached handler"); console.log("[UPLOAD-DBG] CT:", req.headers["content-type"]);
+  if (!req.is("multipart/*")) {
+    return res.status(400).json({ error: "Expected multipart/form-data" });
+  }
+
+  const busboy = Busboy({ headers: req.headers, limits: { fileSize: 500 * 1024 * 1024 } });
+  let fileData = null;
+  let fileName = "video.mp4";
+  let fileMime = "video/mp4";
+
+  busboy.on("file", function (fieldname, file, filename, encoding, mimetype) {
+    if (!filename) { file.resume(); return; }
+    fileName = filename;
+    fileMime = mimetype || "video/mp4";
+    const chunks = [];
+    file.on("data", (chunk) => chunks.push(chunk));
+    file.on("end", () => { fileData = Buffer.concat(chunks); });
+  });
+
+  busboy.on("finish", async () => {
+    if (!fileData) return res.status(400).json({ error: "No file uploaded" });
+
+    if (ycS3.isConfigured()) {
+      try {
+        const result = await ycS3.uploadBuffer(fileData, fileName, fileMime);
+        console.log(`[UPLOAD] S3: ${result.publicUrl}`);
+        return res.json({ video_url: result.publicUrl });
+      } catch (s3Err) {
+        console.error("[UPLOAD] S3 error:", s3Err.message);
+      }
+    }
+    const ext = fileName.split(".").pop() || "mp4";
+    const localName = Date.now() + "-" + crypto.randomBytes(6).toString("hex") + "." + ext;
+    const localPath = path.join(UPLOADS_DIR, localName);
+    fs.writeFileSync(localPath, fileData);
+    const videoUrl = "/uploads/videos/" + localName;
+    console.log(`[UPLOAD] Local: ${videoUrl}`);
+    res.json({ video_url: videoUrl });
+  });
+
+  req.pipe(busboy);
+});
+
 app.use(express.json());
 
-// ─── Accounts CRUD (JSON file-backed) ────────────────────────────────────────
+// ─── Presigned S3 upload URL (client uploads directly to S3) ─────────────────
+
+app.post("/api/presign-upload", async (req, res) => {
+  if (!ycS3.isConfigured()) {
+    return res.status(503).json({ error: "S3 not configured" });
+  }
+  const { filename, contentType } = req.body;
+  if (!filename) return res.status(400).json({ error: "filename is required" });
+  try {
+    const result = await ycS3.getPresignedUploadUrl(filename, contentType || "video/mp4");
+    console.log(`[PRESIGN] ${filename} → ${result.key}`);
+    res.json(result);
+  } catch (err) {
+    console.error("[PRESIGN] Error:", err.message);
+    res.status(500).json({ error: "Failed to generate upload URL" });
+  }
+});
 
 app.get("/api/accounts", (_req, res) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
@@ -145,17 +206,21 @@ app.get("/api/accounts", (_req, res) => {
 });
 
 app.post("/api/accounts", (req, res) => {
-  const { title, price, status, video_url, image_url } = req.body;
+  const { title, price, status, video_url, image_url, category, rentTerms, tags, description } = req.body;
   if (!title) return res.status(400).json({ error: "title is required" });
 
   const accounts = loadAccounts();
   const newAccount = {
     id: `marx-vip-${Date.now()}`,
     title,
+    category: category || "sale",
     price: Number(price) || 0,
     status: status || "В наличии",
     video_url: video_url || "",
     image_url: image_url || "/placeholder.svg",
+    rentTerms: rentTerms || [],
+    tags: tags || [],
+    description: description || null,
   };
   accounts.push(newAccount);
   saveAccounts(accounts);
@@ -169,14 +234,18 @@ app.put("/api/accounts/:id", (req, res) => {
   const idx = accounts.findIndex((a) => a.id === id);
   if (idx === -1) return res.status(404).json({ error: "Account not found" });
 
-  const { title, price, status, video_url, image_url } = req.body;
+  const { title, price, status, video_url, image_url, category, rentTerms, tags, description } = req.body;
   accounts[idx] = {
     ...accounts[idx],
     title: title !== undefined ? title : accounts[idx].title,
+    category: category !== undefined ? category : accounts[idx].category,
     price: price !== undefined ? Number(price) : accounts[idx].price,
     status: status !== undefined ? status : accounts[idx].status,
     video_url: video_url !== undefined ? video_url : accounts[idx].video_url,
     image_url: image_url !== undefined ? image_url : accounts[idx].image_url,
+    rentTerms: rentTerms !== undefined ? rentTerms : accounts[idx].rentTerms,
+    tags: tags !== undefined ? tags : accounts[idx].tags,
+    description: description !== undefined ? description : accounts[idx].description,
   };
   saveAccounts(accounts);
   console.log(`[ADMIN] Account updated: ${id}`);
@@ -195,23 +264,11 @@ app.delete("/api/accounts/:id", (req, res) => {
   res.json({ success: true, id });
 });
 
-// ─── Video upload ────────────────────────────────────────────────────────────
-
-app.post("/api/upload-video", (req, res) => {
-  upload.single("video")(req, res, (err) => {
-    if (err) return res.status(400).json({ error: err.message });
-    if (!req.file) return res.status(400).json({ error: "No file uploaded" });
-    const videoUrl = "/uploads/videos/" + req.file.filename;
-    console.log(`[UPLOAD] Video: ${videoUrl}`);
-    res.json({ video_url: videoUrl });
-  });
-});
-
 // ─── Orders / Payments ───────────────────────────────────────────────────────
 
 app.post("/api/create-order", async (req, res) => {
   try {
-    const { accountId, currency, method, tgInitData } = req.body;
+    const { accountId, currency, method, tgInitData, rentTerm, rentPrice } = req.body;
 
     if (!accountId) return res.status(400).json({ error: "accountId is required" });
     if (!method || !["crypto", "sbp"].includes(method)) {
@@ -229,8 +286,8 @@ app.post("/api/create-order", async (req, res) => {
     storage.reserveAccount(accountId, accounts);
     saveAccounts(accounts);
 
-    const price = account.price;
-    const order = storage.createOrder({ accountId, currency, method });
+    const price = (rentTerm && rentPrice) ? Number(rentPrice) : account.price;
+    const order = storage.createOrder({ accountId, currency, method, rentTerm: rentTerm || null });
 
     if (method === "crypto") {
       const instructions = cryptoPay.getPayInstructions(order.id, price, currency);
@@ -474,8 +531,14 @@ app.post("/api/cancel-order", (req, res) => {
   res.json({ success: true, accountId, status: "В наличии" });
 });
 
+// ─── Healthcheck ─────────────────────────────────────────────────────────────
+
+app.get("/health", (req, res) => {
+  res.status(200).json({ status: "ok" });
+});
+
 // ─── Start ───────────────────────────────────────────────────────────────────
 
-app.listen(PORT, () => {
-  console.log(`\n  MARX SHOP API running on http://localhost:${PORT}\n`);
+app.listen(PORT, "0.0.0.0", () => {
+  console.log(`\n  MARX SHOP API running on http://0.0.0.0:${PORT}${isServerless ? " (serverless)" : ""}\n`);
 });
