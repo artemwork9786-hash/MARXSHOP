@@ -468,7 +468,7 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
       {isRent && account.tags?.length > 0 && (
         <div className="relative bg-[#1A1A1A] px-4 pt-3 pb-2">
           <div className="flex items-center gap-4">
-            <div className="flex-1 relative overflow-hidden">
+            <div className="flex-1 relative">
               <div
                 ref={tagsRef}
                 className="flex items-center gap-2 overflow-x-auto cursor-grab active:cursor-grabbing"
@@ -496,13 +496,13 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
                   <span key={i} className="shrink-0 rounded-lg bg-white/[0.06] border border-white/[0.08] px-3 py-1.5 text-[11px] font-medium text-white/70 whitespace-nowrap select-none">{tag}</span>
                 ))}
               </div>
-              <div className="pointer-events-none absolute inset-y-0 left-0 w-24 z-10" style={{ background: "linear-gradient(to right, #1A1A1A 0%, rgba(26,26,26,0.6) 40%, transparent 100%)", opacity: showLeftFade ? 1 : 0, transition: "opacity 200ms ease-out" }} />
-              <div className="pointer-events-none absolute inset-y-0 right-0 w-24 z-10" style={{ background: "linear-gradient(to left, #1A1A1A 0%, rgba(26,26,26,0.6) 40%, transparent 100%)", opacity: showRightFade ? 1 : 0, transition: "opacity 200ms ease-out" }} />
             </div>
             {account.description?.content && (
               <button onClick={() => setShowExtraInfo(true)} className="shrink-0 rounded-lg bg-white/[0.04] border border-white/[0.1] backdrop-blur-sm px-3 py-1.5 text-[11px] font-semibold text-white/60 hover:text-white/80 hover:bg-white/[0.07] hover:border-white/[0.15] transition-all whitespace-nowrap select-none" style={{ transform: "translateZ(0)", willChange: "backdrop-filter" }}>Доп. инфо</button>
             )}
           </div>
+          <div className="pointer-events-none absolute inset-y-0 -left-1 w-28 z-10" style={{ background: "linear-gradient(to right, #1A1A1A 0%, rgba(26,26,26,0.6) 40%, transparent 100%)", opacity: showLeftFade ? 1 : 0, transition: "opacity 200ms ease-out" }} />
+          <div className="pointer-events-none absolute inset-y-0 -right-1 w-28 z-10" style={{ background: "linear-gradient(to left, #1A1A1A 0%, rgba(26,26,26,0.6) 40%, transparent 100%)", opacity: showRightFade ? 1 : 0, transition: "opacity 200ms ease-out" }} />
         </div>
       )}
 
