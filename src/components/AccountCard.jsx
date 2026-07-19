@@ -271,10 +271,8 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
             </div>
             {title && (
               <div className={`absolute left-3 z-30 transition-all duration-500 ease-[cubic-bezier(0.4,0,0.2,1)] ${showControls ? "bottom-[52px] opacity-100" : "bottom-3 opacity-90"}`}>
-                <div className="relative rounded-lg border border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.5)] overflow-hidden">
-                  {poster && <img src={poster} alt="" className="absolute inset-0 w-full h-full object-cover scale-150 blur-xl opacity-40" />}
-                  <div className="absolute inset-0 rounded-lg bg-black/40" />
-                  <span className="relative z-10 block px-2.5 py-1 text-sm font-bold text-white tracking-wide" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>{title}</span>
+                <div className="rounded-lg bg-black/50 backdrop-blur-md border border-white/20 px-2.5 py-1 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+                  <span className="text-sm font-bold text-white tracking-wide" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>{title}</span>
                 </div>
               </div>
             )}
@@ -454,10 +452,8 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
             <div className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${isAvailable ? "bg-white text-black" : "bg-neutral-700 text-neutral-400"}`}>{account.status}</div>
           </div>
           <div className="absolute bottom-20 left-3 z-30">
-            <div className="relative rounded-lg border border-white/10 shadow-[0_4px_24px_rgba(0,0,0,0.5)] overflow-hidden">
-              {account.image_url && <img src={account.image_url} alt="" className="absolute inset-0 w-full h-full object-cover scale-150 blur-xl opacity-40" />}
-              <div className="absolute inset-0 rounded-lg bg-black/40" />
-              <span className="relative z-10 block px-2.5 py-1 text-sm font-bold text-white tracking-wide" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>{account.title}</span>
+            <div className="rounded-lg bg-black/50 backdrop-blur-md border border-white/20 px-2.5 py-1 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+              <span className="text-sm font-bold text-white tracking-wide" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>{account.title}</span>
             </div>
           </div>
         </div>
