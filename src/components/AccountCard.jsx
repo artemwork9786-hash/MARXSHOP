@@ -229,7 +229,7 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
       const btn = volumeBtnRef.current;
       if (!btn) return;
       const rect = btn.getBoundingClientRect();
-      setVolumeBtnRect({ left: rect.left + rect.width / 2 - 14, top: rect.top - 90 });
+      setVolumeBtnRect({ left: rect.left + rect.width / 2 - 18, top: rect.top - 90 });
     }, 50);
     return () => clearTimeout(timer);
   }, [showVolume]);
