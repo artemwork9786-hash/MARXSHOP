@@ -89,7 +89,9 @@ function FormScreen({ account, category, onDone, onBack }) {
     category: category,
     tags: account?.tags || [],
     rentTerms: account?.rentTerms || [],
-    description: account?.description || { title: "", content: "" },
+    description: typeof account?.description === "string"
+      ? { title: "", content: account.description }
+      : account?.description || { title: "", content: "" },
   });
   const [loading, setLoading] = useState(false);
   const [uploading, setUploading] = useState(false);
@@ -154,7 +156,7 @@ function FormScreen({ account, category, onDone, onBack }) {
       </div>
       <div className="space-y-3">
         <input className={INPUT} placeholder="Название (MARX VIP #1)" value={form.title} onChange={set("title")} />
-        <input className={INPUT} type="number" placeholder={isRent ? "Цена (₽, необязательно)" : "Цена (₽)"} value={form.price} onChange={set("price")} />
+        {!isRent && <input className={INPUT} type="number" placeholder="Цена (₽)" value={form.price} onChange={set("price")} />}
         <select className={INPUT} value={form.status} onChange={set("status")}>
           <option value="В наличии">В наличии</option>
           <option value="Занят">Занят</option>
