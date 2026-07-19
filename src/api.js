@@ -41,23 +41,33 @@ export function deleteAccount(id) {
 }
 
 export async function uploadVideo(file) {
-  const formData = new FormData();
-  formData.append("video", file);
-  const res = await fetch(`${API_URL}/api/upload-video`, {
+  // Step 1: Get presigned S3 URL from server (tiny request through tunnel)
+  const presignRes = await fetch(`${API_URL}/api/presign-upload`, {
     method: "POST",
-    body: formData,
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({ filename: file.name, contentType: file.type || "video/mp4" }),
     cache: "no-store",
   });
-  if (!res.ok) throw new Error(`Upload error: ${res.status}`);
-  return res.json();
+  if (!presignRes.ok) throw new Error(`Presign error: ${presignRes.status}`);
+  const { uploadUrl, publicUrl } = await presignRes.json();
+
+  // Step 2: Upload directly to S3 (bypasses tunnel — goes straight to Yandex Cloud)
+  const uploadRes = await fetch(uploadUrl, {
+    method: "PUT",
+    body: file,
+    headers: { "Content-Type": file.type || "video/mp4" },
+  });
+  if (!uploadRes.ok) throw new Error(`S3 upload error: ${uploadRes.status}`);
+
+  return { video_url: publicUrl };
 }
 
 // ─── Orders / Payments ──────────────────────────────────────────────────────
 
-export function createOrder({ accountId, currency, method, tgInitData }) {
+export function createOrder({ accountId, currency, method, tgInitData, rentTerm, rentPrice }) {
   return request("/api/create-order", {
     method: "POST",
-    body: JSON.stringify({ accountId, currency, method, tgInitData }),
+    body: JSON.stringify({ accountId, currency, method, tgInitData, rentTerm, rentPrice }),
   });
 }
 

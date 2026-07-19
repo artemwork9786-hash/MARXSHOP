@@ -5,6 +5,9 @@ import tailwindcss from '@tailwindcss/vite';
 export default defineConfig({
   base: '/MARXSHOP/',
   plugins: [react(), tailwindcss()],
+  define: {
+    'import.meta.env.VITE_BUILD_TIME': JSON.stringify(Date.now()),
+  },
   build: {
     rollupOptions: {
       output: {

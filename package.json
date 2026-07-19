@@ -5,12 +5,17 @@
   "type": "module",
   "homepage": "https://artemwork9786-hash.github.io/MARXSHOP",
   "scripts": {
-    "dev": "vite",
+    "dev": "vite --host",
+    "local": "node scripts/setup-local.cjs",
     "dev:server": "cd server && npm run dev",
     "dev:all": "concurrently \"npm run dev:server\" \"npm run dev\"",
     "build": "vite build",
     "lint": "oxlint",
     "preview": "vite preview",
+    "start:server": "cd server && node server.js",
+    "start:tunnel": "npx localtunnel --port 5000",
+    "start:all": "concurrently \"npm run start:server\" \"npm run start:tunnel\"",
+    "tunnel:auto": "node scripts/setup-tunnel.cjs",
     "predeploy": "npm run build",
     "deploy": "gh-pages -d dist"
   },
