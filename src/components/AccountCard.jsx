@@ -542,8 +542,9 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
 
       {showExtraInfo && (
         <div
-          className="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 font-mono rounded-2xl overflow-hidden"
+          className="absolute inset-0 z-50 flex flex-col items-center justify-center p-6 font-mono overflow-hidden"
           style={{
+            clipPath: "inset(0 round 1rem)",
             transform: "translateZ(0)",
             willChange: "transform",
             backdropFilter: "blur(24px) saturate(140%)",
