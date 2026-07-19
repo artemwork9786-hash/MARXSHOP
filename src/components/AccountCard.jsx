@@ -272,7 +272,7 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
             </div>
             {title && (
               <div className="absolute left-3 bottom-3 z-30 transition-transform duration-500 ease-[cubic-bezier(0.4,0,0.2,1)]" style={{ transform: showControls ? "translateY(-40px)" : "translateY(0)" }}>
-                <div className="rounded-lg bg-black/50 backdrop-blur-md border border-white/20 px-2.5 py-1 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+                <div className="rounded-lg bg-black/50 backdrop-blur-md border border-white/20 px-3 py-1.5 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
                   <span className="text-sm font-bold text-white tracking-wide" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>{title}</span>
                 </div>
               </div>
@@ -346,8 +346,8 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
             </div>
           )}
           {title && (
-            <div className="absolute left-3" style={{ zIndex: 10001, bottom: showControls ? "52px" : "12px", transition: "bottom 0.5s cubic-bezier(0.4,0,0.2,1)" }}>
-              <div className="rounded-lg bg-black/40 backdrop-blur-md border border-white/10 px-3 py-1.5 shadow-[0_4px_24px_rgba(0,0,0,0.5)] flex items-center justify-center">
+            <div className="absolute left-3" style={{ zIndex: 10001, bottom: showControls ? "64px" : "20px", transition: "bottom 0.5s cubic-bezier(0.4,0,0.2,1)" }}>
+              <div className="rounded-lg bg-black/50 backdrop-blur-md border border-white/20 px-3 py-1.5 shadow-[0_4px_24px_rgba(0,0,0,0.5)] flex items-center justify-center">
                 <span className="text-sm font-bold text-white tracking-wide" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>{title}</span>
               </div>
             </div>
