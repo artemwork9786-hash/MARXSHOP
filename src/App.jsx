@@ -300,7 +300,7 @@ function App() {
   return (
     <div className="flex min-h-dvh flex-col bg-[#0A0A0A]">
       <Header />
-      <main className="flex-1 overflow-y-auto pb-24 pt-[72px]">
+      <main className="flex-1 overflow-y-auto pb-24">
         {activeTab === "shop" && (
           <ShopTab accounts={saleAccounts} currency={currency} setCurrency={setCurrency} rates={rates} onBuy={handleRent} />
         )}
