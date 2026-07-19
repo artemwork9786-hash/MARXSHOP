@@ -26,10 +26,6 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
   const videoRef = useRef(null);
   const inputRef = useRef(null);
   const volumeRef = useRef(null);
-  const volumeBtnRef = useRef(null);
-  const volumePopoverRef = useRef(null);
-  const [volumeBtnRect, setVolumeBtnRect] = useState(null);
-  const [showAnimated, setShowAnimated] = useState(false);
   const [playing, setPlaying] = useState(false);
   const wasPlayingRef = useRef(false);
   const [currentTime, setCurrentTime] = useState(0);
@@ -225,40 +221,6 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
     };
   }, [isFullscreen]);
 
-  useEffect(() => {
-    if (!showVolume || !volumeBtnRef.current) { setVolumeBtnRect(null); setShowAnimated(false); return; }
-    const update = () => {
-      const btn = volumeBtnRef.current;
-      if (!btn) return;
-      const btnRect = btn.getBoundingClientRect();
-      setVolumeBtnRect({
-        left: btnRect.left + btnRect.width / 2 - 14,
-        top: btnRect.top - 90,
-      });
-      requestAnimationFrame(() => setShowAnimated(true));
-    };
-    const timer = setTimeout(update, 50);
-    window.addEventListener("resize", update);
-    window.addEventListener("scroll", update, true);
-    return () => {
-      clearTimeout(timer);
-      window.removeEventListener("resize", update);
-      window.removeEventListener("scroll", update, true);
-    };
-  }, [showVolume]);
-
-  useEffect(() => {
-    if (!showVolume) return;
-    const handleClick = (e) => {
-      if (volumeBtnRef.current && !volumeBtnRef.current.contains(e.target) &&
-          volumePopoverRef.current && !volumePopoverRef.current.contains(e.target)) {
-        setShowVolume(false);
-      }
-    };
-    document.addEventListener("pointerdown", handleClick);
-    return () => document.removeEventListener("pointerdown", handleClick);
-  }, [showVolume]);
-
   const inputValue = (currentTime / (duration || 1)) * 1000;
 
   return (
@@ -328,26 +290,19 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
                     <input ref={inputRef} type="range" min="0" max="1000" step="1" value={Math.round(inputValue)} onInput={handleInput} onMouseDown={handlePointerDown} onMouseUp={handlePointerUp} onTouchStart={handlePointerDown} onTouchEnd={handlePointerUp} className="absolute inset-0 w-full h-full appearance-none bg-transparent cursor-pointer opacity-0 z-10 m-0 p-0" style={{ WebkitAppearance: "none", MozAppearance: "none" }} />
                   </div>
                   <div className="relative shrink-0 flex items-center">
-                    <button ref={volumeBtnRef} onClick={toggleMute} onMouseEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }} onMouseLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }} className="text-white/70 hover:text-white transition-colors flex items-center justify-center">
+                    <button onClick={toggleMute} onMouseEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }} onMouseLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }} className="text-white/70 hover:text-white transition-colors flex items-center justify-center">
                       {muted || volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
                     </button>
-                  </div>
-                  {volumeBtnRect && createPortal(
-                    <>
-                      <div ref={volumePopoverRef} className="fixed z-[9999] transition-[clip-path,filter] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]" style={{ left: volumeBtnRect.left, top: volumeBtnRect.top, clipPath: showAnimated ? "inset(0)" : "inset(0 0 100% 0)", filter: showAnimated ? "brightness(1)" : "brightness(0)", pointerEvents: showAnimated ? "auto" : "none" }} onPointerEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }} onPointerLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}>
-                        <div className="transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-bottom" style={{ transform: showAnimated ? "translateY(0) scale(1)" : "translateY(12px) scale(0.95)" }}>
-                          <div className="flex flex-col items-center p-1.5 rounded-lg bg-black/63 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
-                            <div ref={volumeRef} className="relative h-16 w-5 cursor-pointer touch-none select-none" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setVolumeDragging(true); volumeRef.current?.setPointerCapture(e.pointerId); }} onPointerMove={(e) => { if (!volumeDragging) return; e.preventDefault(); setVolumeFromY(e.clientY); }} onPointerUp={(e) => { setVolumeDragging(false); volumeRef.current?.releasePointerCapture(e.pointerId); }}>
-                              <div className="absolute bottom-[3px] top-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white/15 pointer-events-none" />
-                              <div className="absolute bottom-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white pointer-events-none" style={{ height: `calc(${(muted ? 0 : volume) * 100}% - 6px)` }} />
-                              <div className="absolute left-1/2 -translate-x-1/2 h-[7px] w-[7px] rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none" style={{ bottom: `calc(${(muted ? 0 : volume)} * 50px + 3px)` }} />
-                            </div>
-                          </div>
+                    <div className="absolute left-1/2 -translate-x-1/2 bottom-[calc(100%+8px)] z-50 transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-bottom" style={{ transform: showVolume ? "translateY(0) scale(1)" : "translateY(12px) scale(0.95)", pointerEvents: showVolume ? "auto" : "none" }} onMouseEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }} onMouseLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}>
+                      <div className="flex flex-col items-center p-1.5 rounded-lg bg-black/63 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
+                        <div ref={volumeRef} className="relative h-16 w-5 cursor-pointer touch-none select-none" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setVolumeDragging(true); volumeRef.current?.setPointerCapture(e.pointerId); }} onPointerMove={(e) => { if (!volumeDragging) return; e.preventDefault(); setVolumeFromY(e.clientY); }} onPointerUp={(e) => { setVolumeDragging(false); volumeRef.current?.releasePointerCapture(e.pointerId); }}>
+                          <div className="absolute bottom-[3px] top-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white/15 pointer-events-none" />
+                          <div className="absolute bottom-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white pointer-events-none" style={{ height: `calc(${(muted ? 0 : volume) * 100}% - 6px)` }} />
+                          <div className="absolute left-1/2 -translate-x-1/2 h-[7px] w-[7px] rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none" style={{ bottom: `calc(${(muted ? 0 : volume)} * 50px + 3px)` }} />
                         </div>
                       </div>
-                    </>,
-                    document.body
-                  )}
+                    </div>
+                  </div>
                   <button onClick={toggleFullscreen} className="shrink-0 text-white/70 hover:text-white transition-colors">
                     <Maximize size={16} />
                   </button>
@@ -410,26 +365,19 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
                   <input type="range" min="0" max="1000" step="1" value={Math.round(inputValue)} onInput={handleInput} onMouseDown={handlePointerDown} onMouseUp={handlePointerUp} onTouchStart={handlePointerDown} onTouchEnd={handlePointerUp} className="absolute inset-0 w-full h-full appearance-none bg-transparent cursor-pointer opacity-0 z-10 m-0 p-0" style={{ WebkitAppearance: "none", MozAppearance: "none" }} />
                 </div>
                 <div className="relative shrink-0 flex items-center">
-                  <button ref={volumeBtnRef} onClick={toggleMute} onMouseEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }} onMouseLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }} className="text-white/70 hover:text-white transition-colors flex items-center justify-center">
+                  <button onClick={toggleMute} onMouseEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }} onMouseLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }} className="text-white/70 hover:text-white transition-colors flex items-center justify-center">
                     {muted || volume === 0 ? <VolumeX size={16} /> : <Volume2 size={16} />}
                   </button>
-                </div>
-                {volumeBtnRect && createPortal(
-                  <>
-                    <div ref={volumePopoverRef} className="fixed z-[9999] transition-[clip-path,filter] duration-300 ease-[cubic-bezier(0.4,0,0.2,1)]" style={{ left: volumeBtnRect.left, top: volumeBtnRect.top, clipPath: showAnimated ? "inset(0)" : "inset(0 0 100% 0)", filter: showAnimated ? "brightness(1)" : "brightness(0)", pointerEvents: showAnimated ? "auto" : "none" }} onPointerEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }} onPointerLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}>
-                      <div className="transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-bottom" style={{ transform: showAnimated ? "translateY(0) scale(1)" : "translateY(12px) scale(0.95)" }}>
-                        <div className="flex flex-col items-center p-1.5 rounded-lg bg-black/63 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
-                          <div ref={volumeRef} className="relative h-16 w-5 cursor-pointer touch-none select-none" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setVolumeDragging(true); volumeRef.current?.setPointerCapture(e.pointerId); }} onPointerMove={(e) => { if (!volumeDragging) return; e.preventDefault(); setVolumeFromY(e.clientY); }} onPointerUp={(e) => { setVolumeDragging(false); volumeRef.current?.releasePointerCapture(e.pointerId); }}>
-                            <div className="absolute bottom-[3px] top-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white/15 pointer-events-none" />
-                            <div className="absolute bottom-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white pointer-events-none" style={{ height: `calc(${(muted ? 0 : volume) * 100}% - 6px)` }} />
-                            <div className="absolute left-1/2 -translate-x-1/2 h-[7px] w-[7px] rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none" style={{ bottom: `calc(${(muted ? 0 : volume)} * 50px + 3px)` }} />
-                          </div>
-                        </div>
+                  <div className="absolute left-1/2 -translate-x-1/2 bottom-[calc(100%+8px)] z-50 transition-transform duration-300 ease-[cubic-bezier(0.4,0,0.2,1)] origin-bottom" style={{ transform: showVolume ? "translateY(0) scale(1)" : "translateY(12px) scale(0.95)", pointerEvents: showVolume ? "auto" : "none" }} onMouseEnter={() => { clearTimeout(volumeTimer.current); setShowVolume(true); }} onMouseLeave={() => { if (!volumeDragging) volumeTimer.current = setTimeout(() => setShowVolume(false), 300); }}>
+                    <div className="flex flex-col items-center p-1.5 rounded-lg bg-black/63 backdrop-blur-md shadow-[0_8px_24px_rgba(0,0,0,0.6)]">
+                      <div ref={volumeRef} className="relative h-16 w-5 cursor-pointer touch-none select-none" onPointerDown={(e) => { e.preventDefault(); e.stopPropagation(); setVolumeDragging(true); volumeRef.current?.setPointerCapture(e.pointerId); }} onPointerMove={(e) => { if (!volumeDragging) return; e.preventDefault(); setVolumeFromY(e.clientY); }} onPointerUp={(e) => { setVolumeDragging(false); volumeRef.current?.releasePointerCapture(e.pointerId); }}>
+                        <div className="absolute bottom-[3px] top-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white/15 pointer-events-none" />
+                        <div className="absolute bottom-[3px] left-1/2 -translate-x-1/2 w-[2px] rounded-full bg-white pointer-events-none" style={{ height: `calc(${(muted ? 0 : volume) * 100}% - 6px)` }} />
+                        <div className="absolute left-1/2 -translate-x-1/2 h-[7px] w-[7px] rounded-full bg-white shadow-[0_0_6px_rgba(255,255,255,0.4)] pointer-events-none" style={{ bottom: `calc(${(muted ? 0 : volume)} * 50px + 3px)` }} />
                       </div>
                     </div>
-                  </>,
-                  document.body
-                )}
+                  </div>
+                </div>
                 <button onClick={toggleFullscreen} className="shrink-0 text-white/70 hover:text-white transition-colors">
                   <Maximize size={16} />
                 </button>
