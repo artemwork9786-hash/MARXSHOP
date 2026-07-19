@@ -227,7 +227,8 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
     <>
       <div
         ref={containerRef}
-        className="relative w-full aspect-video overflow-hidden bg-[#111] cursor-pointer"
+        className="relative w-full aspect-video bg-[#111] cursor-pointer"
+        style={{ clipPath: "inset(0 round 1rem)" }}
         onClick={(e) => {
           if (isFullscreen || e.target.closest("[data-glass-controls]")) return;
           togglePlay();
@@ -443,11 +444,11 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
   }, [isRent, account.tags]);
 
   return (
-    <div className="relative rounded-2xl border border-white/5 bg-[#1A1A1A] shadow-2xl shadow-black/80" style={{ clipPath: "inset(0 round 1rem)" }}>
+    <div className="relative rounded-2xl border border-white/5 bg-[#1A1A1A] shadow-2xl shadow-black/80">
       {hasVideo ? (
         <GlassPlayer src={videoSrc} poster={account.image_url || undefined} title={account.title} status={account.status} videoHidden={showExtraInfo} onFullscreenChange={setIsCardFullscreen} />
       ) : (
-        <div className="relative w-full aspect-video bg-[#111]">
+        <div className="relative w-full aspect-video bg-[#111]" style={{ clipPath: "inset(0 round 1rem)" }}>
           <img src={account.image_url || "/placeholder.svg"} alt={account.title} className="absolute inset-0 w-full h-full object-cover" />
           <div className="absolute top-3 left-3 z-30">
             <div className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${isAvailable ? "bg-white text-black" : "bg-neutral-700 text-neutral-400"}`}>{account.status}</div>
