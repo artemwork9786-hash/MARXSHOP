@@ -228,7 +228,7 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
       <div
         ref={containerRef}
         className="relative w-full aspect-video bg-[#111] cursor-pointer"
-        style={isFullscreen ? undefined : { clipPath: "inset(0 round 1rem 1rem 0 0)" }}
+        style={isFullscreen ? undefined : { borderRadius: "1rem 1rem 0 0" }}
         onClick={(e) => {
           if (isFullscreen || e.target.closest("[data-glass-controls]")) return;
           togglePlay();
