@@ -2,17 +2,18 @@ import { User } from "lucide-react";
 
 export default function Header() {
   return (
-    <div className="relative z-50 shrink-0">
+    <>
       <div
-        className="absolute inset-0 bg-neutral-900/70 backdrop-blur-md border-b border-white/5"
+        className="fixed top-0 left-0 right-0 z-40 bg-neutral-900/70 backdrop-blur-md border-b border-white/5"
         style={{
+          height: "72px",
           transform: "translateZ(0)",
           willChange: "backdrop-filter",
           WebkitBackdropFilter: "blur(12px) saturate(150%)",
           backdropFilter: "blur(12px) saturate(150%)",
         }}
       />
-      <div className="relative z-10 flex items-center justify-between px-4 pt-4 pb-3">
+      <div className="relative z-50 shrink-0 flex items-center justify-between px-4 pt-4 pb-3">
         <div>
           <h1 className="text-xl font-bold tracking-widest text-white uppercase">
             MARX SHOP
@@ -25,6 +26,6 @@ export default function Header() {
           <User size={18} />
         </button>
       </div>
-    </div>
+    </>
   );
 }
