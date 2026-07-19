@@ -53,7 +53,16 @@ function loadAccounts() {
         parsed.forEach(a => {
           if (!a.category) a.category = "sale";
           if (!a.rentTerms) a.rentTerms = [];
-          if (!a.extraInfo) a.extraInfo = [];
+          if (!a.tags) a.tags = [];
+          // Миграция: extraInfo → description
+          if (!a.description && a.extraInfo?.length) {
+            a.description = { title: "Дополнительная информация:", content: a.extraInfo.join("\n") };
+          }
+          // Миграция: description (строка) → description (объект)
+          if (typeof a.description === "string") {
+            a.description = { title: "", content: a.description };
+          }
+          if (!a.description) a.description = null;
         });
         console.log(`[DATA] Loaded ${parsed.length} accounts from ${PRODUCTS_FILE}`);
         return parsed;
