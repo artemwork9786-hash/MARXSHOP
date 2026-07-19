@@ -452,7 +452,7 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
             <div className={`rounded-full px-2.5 py-1 text-[10px] font-bold uppercase tracking-wider ${isAvailable ? "bg-white text-black" : "bg-neutral-700 text-neutral-400"}`}>{account.status}</div>
           </div>
           <div className="absolute bottom-20 left-3 z-30">
-            <div className="rounded-lg bg-black/40 backdrop-blur-xl border border-white/10 px-2.5 py-1 shadow-[0_4px_24px_rgba(0,0,0,0.5)]">
+            <div className="rounded-lg bg-black/40 backdrop-blur-xl border border-white/10 px-2.5 py-1 shadow-[0_4px_24px_rgba(0,0,0,0.5)]" style={{ transform: "translateZ(0)", willChange: "backdrop-filter", WebkitBackdropFilter: "blur(24px) saturate(140%)", backdropFilter: "blur(24px) saturate(140%)" }}>
               <span className="text-sm font-bold text-white tracking-wide" style={{ fontFamily: "'Inter', system-ui, sans-serif" }}>{account.title}</span>
             </div>
           </div>
@@ -498,7 +498,7 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
               <div className="pointer-events-none absolute inset-y-0 right-0 w-16 z-10" style={{ background: "linear-gradient(to left, #1A1A1A 0%, rgba(26,26,26,0.6) 40%, transparent 100%)", opacity: showRightFade ? 1 : 0, transition: "opacity 200ms ease-out" }} />
             </div>
             {account.extraInfo?.length > 0 && (
-              <button onClick={() => setShowExtraInfo(true)} className="shrink-0 rounded-lg bg-white/[0.04] border border-white/[0.1] backdrop-blur-sm px-3 py-1.5 text-[11px] font-semibold text-white/60 hover:text-white/80 hover:bg-white/[0.07] hover:border-white/[0.15] transition-all whitespace-nowrap select-none">Доп. инфо</button>
+              <button onClick={() => setShowExtraInfo(true)} className="shrink-0 rounded-lg bg-white/[0.04] border border-white/[0.1] backdrop-blur-sm px-3 py-1.5 text-[11px] font-semibold text-white/60 hover:text-white/80 hover:bg-white/[0.07] hover:border-white/[0.15] transition-all whitespace-nowrap select-none" style={{ transform: "translateZ(0)", willChange: "backdrop-filter" }}>Доп. инфо</button>
             )}
           </div>
         </div>

@@ -9,18 +9,8 @@ const NAV_ITEMS = [
 
 export default function BottomNav({ active, setActive }) {
   return (
-    <>
-      <div
-        className="fixed bottom-0 left-0 right-0 z-40 bg-neutral-900/70 backdrop-blur-md border-t border-white/5"
-        style={{
-          transform: "translateZ(0)",
-          willChange: "backdrop-filter",
-          WebkitBackdropFilter: "blur(12px) saturate(150%)",
-          backdropFilter: "blur(12px) saturate(150%)",
-        }}
-      />
-      <nav className="fixed bottom-0 left-0 right-0 z-50">
-        <div className="mx-auto flex max-w-lg items-center justify-around py-2.5">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/5 bg-neutral-900/70 backdrop-blur-md">
+      <div className="mx-auto flex max-w-lg items-center justify-around py-2.5">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = active === item.id;
@@ -39,8 +29,7 @@ export default function BottomNav({ active, setActive }) {
             </button>
           );
         })}
-        </div>
-      </nav>
-    </>
+      </div>
+    </nav>
   );
 }
