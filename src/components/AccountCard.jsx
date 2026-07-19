@@ -442,7 +442,7 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
   }, [isRent, account.tags]);
 
   return (
-    <div className="relative overflow-hidden rounded-2xl border border-white/5 bg-[#1A1A1A] shadow-2xl shadow-black/80">
+    <div className="relative rounded-2xl border border-white/5 bg-[#1A1A1A] shadow-2xl shadow-black/80" style={{ clipPath: "inset(0 round 1rem)" }}>
       {hasVideo ? (
         <GlassPlayer src={videoSrc} poster={account.image_url || undefined} title={account.title} status={account.status} videoHidden={showExtraInfo} onFullscreenChange={setIsCardFullscreen} />
       ) : (
