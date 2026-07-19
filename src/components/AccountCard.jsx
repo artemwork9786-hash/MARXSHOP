@@ -229,7 +229,11 @@ function GlassPlayer({ src, poster, title, status, videoHidden, onFullscreenChan
     let raf;
     const update = () => {
       const rect = volumeBtnRef.current.getBoundingClientRect();
-      setVolumeBtnRect({ left: rect.left + rect.width / 2 - 10, top: rect.top - 72 });
+      const vp = window.visualViewport || { offsetLeft: 0, offsetTop: 0 };
+      setVolumeBtnRect({
+        left: rect.left + vp.offsetLeft + rect.width / 2 - 10,
+        top: rect.top + vp.offsetTop - 80,
+      });
     };
     raf = requestAnimationFrame(update);
     window.addEventListener("resize", update);
