@@ -499,7 +499,7 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
               <div className="pointer-events-none absolute inset-y-0 left-0 w-16 z-10" style={{ background: "linear-gradient(to right, #1A1A1A 0%, rgba(26,26,26,0.6) 40%, transparent 100%)", opacity: showLeftFade ? 1 : 0, transition: "opacity 200ms ease-out" }} />
               <div className="pointer-events-none absolute inset-y-0 right-0 w-16 z-10" style={{ background: "linear-gradient(to left, #1A1A1A 0%, rgba(26,26,26,0.6) 40%, transparent 100%)", opacity: showRightFade ? 1 : 0, transition: "opacity 200ms ease-out" }} />
             </div>
-            {account.extraInfo?.length > 0 && (
+            {account.description?.content && (
               <button onClick={() => setShowExtraInfo(true)} className="shrink-0 rounded-lg bg-white/[0.04] border border-white/[0.1] backdrop-blur-sm px-3 py-1.5 text-[11px] font-semibold text-white/60 hover:text-white/80 hover:bg-white/[0.07] hover:border-white/[0.15] transition-all whitespace-nowrap select-none" style={{ transform: "translateZ(0)", willChange: "backdrop-filter" }}>Доп. инфо</button>
             )}
           </div>
@@ -554,10 +554,8 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
         >
           <button onClick={() => setShowExtraInfo(false)} className="absolute top-4 right-4 text-white/40 hover:text-white transition-colors cursor-pointer text-lg leading-none">✕</button>
           <div className="text-left w-full max-w-sm">
-            <p className="text-lg font-bold text-white mb-5">Дополнительная информация:</p>
-            {account.extraInfo?.map((item, i) => (
-              <p key={i} className="text-base text-white/80 leading-relaxed mb-2">- {item}</p>
-            ))}
+            <p className="text-lg font-bold text-white mb-5">{account.description?.title || "Дополнительная информация:"}</p>
+            <p className="text-base text-white/80 leading-relaxed whitespace-pre-wrap">{account.description?.content}</p>
           </div>
         </div>
       )}
