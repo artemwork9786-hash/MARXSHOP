@@ -28,12 +28,18 @@ function handleCopy(text) {
 
 // ─── Payment Method Selector ──────────────────────────────────────────────────
 
-function PaymentMethodSelector({ onSelect }) {
+function PaymentMethodSelector({ onSelect, selectedRentTerm, activeOrder }) {
+  const termLabel = selectedRentTerm ? ` (${selectedRentTerm.label} — ${selectedRentTerm.price} ₽)` : "";
+  const orderType = activeOrder?.category === "rent" ? "Аренда" : "Покупка";
+
   return (
     <div className="px-4 pt-6 pb-6">
-      <h2 className="text-lg font-bold text-white tracking-wide text-center mb-4">
+      <h2 className="text-lg font-bold text-white tracking-wide text-center mb-2">
         Выберите способ оплаты
       </h2>
+      <p className="text-sm text-neutral-500 text-center mb-4">
+        {orderType}: {activeOrder?.title}{termLabel}
+      </p>
       <div className="space-y-3">
         <button
           onClick={() => onSelect("crypto")}
@@ -68,7 +74,7 @@ function PaymentMethodSelector({ onSelect }) {
 
 // ─── SBP Payment View ────────────────────────────────────────────────────────
 
-function SbpPaymentView({ activeOrder, paymentDetails, paymentTimer }) {
+function SbpPaymentView({ activeOrder, paymentDetails, paymentTimer, selectedRentTerm }) {
   const isExpired = paymentTimer <= 0;
 
   if (isExpired) {
@@ -81,13 +87,15 @@ function SbpPaymentView({ activeOrder, paymentDetails, paymentTimer }) {
           Время оплаты истекло!
         </h2>
         <p className="mt-2 text-center text-sm text-neutral-500">
-          Бронь автоматически снята. Выберите аккаунт заново в Магазине.
+          Бронь автоматически снята. Выберите аккаунт заново.
         </p>
       </div>
     );
   }
 
   if (!paymentDetails) return null;
+
+  const termLabel = selectedRentTerm ? ` (${selectedRentTerm.label})` : "";
 
   return (
     <div className="px-4 pt-6 pb-6">
@@ -101,7 +109,7 @@ function SbpPaymentView({ activeOrder, paymentDetails, paymentTimer }) {
               Оплата через СБП
             </p>
             <h2 className="text-sm font-bold text-white">
-              Аренда: {activeOrder.title}
+              {activeOrder.category === "rent" ? "Аренда" : "Покупка"}: {activeOrder.title}{termLabel}
             </h2>
           </div>
         </div>
@@ -358,7 +366,7 @@ function EmptyProfile({ onAccountsChanged }) {
 
 // ─── Crypto Manual Payment View ──────────────────────────────────────────────
 
-function CryptoManualView({ activeOrder, cryptoInstructions, paymentTimer, onVerifyInvoice }) {
+function CryptoManualView({ activeOrder, cryptoInstructions, paymentTimer, onVerifyInvoice, selectedRentTerm }) {
   const [invoiceId, setInvoiceId] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const isExpired = paymentTimer <= 0;
@@ -373,6 +381,8 @@ function CryptoManualView({ activeOrder, cryptoInstructions, paymentTimer, onVer
     }
   };
 
+  const termLabel = selectedRentTerm ? ` (${selectedRentTerm.label})` : "";
+
   if (isExpired) {
     return (
       <div className="flex flex-col items-center px-4 pt-10 pb-6">
@@ -383,7 +393,7 @@ function CryptoManualView({ activeOrder, cryptoInstructions, paymentTimer, onVer
           Время оплаты истекло!
         </h2>
         <p className="mt-2 text-center text-sm text-neutral-500">
-          Бронь автоматически снята. Выберите аккаунт заново в Магазине.
+          Бронь автоматически снята. Выберите аккаунт заново.
         </p>
       </div>
     );
@@ -401,7 +411,7 @@ function CryptoManualView({ activeOrder, cryptoInstructions, paymentTimer, onVer
               Оплата через CryptoBot
             </p>
             <h2 className="text-sm font-bold text-white">
-              Аренда: {activeOrder.title}
+              {activeOrder.category === "rent" ? "Аренда" : "Покупка"}: {activeOrder.title}{termLabel}
             </h2>
           </div>
         </div>
@@ -476,6 +486,7 @@ export default function ProfileTab({
   paymentDetails,
   cryptoInstructions,
   credentials,
+  selectedRentTerm,
   onSelectMethod,
   onVerifyInvoice,
   onClearOrder,
@@ -488,7 +499,7 @@ export default function ProfileTab({
 
   // Payment method not yet chosen — show selector
   if (!paymentMethod && orderStatus === null) {
-    return <PaymentMethodSelector onSelect={onSelectMethod} />;
+    return <PaymentMethodSelector onSelect={onSelectMethod} selectedRentTerm={selectedRentTerm} activeOrder={activeOrder} />;
   }
 
   // Paid — show credentials
@@ -510,6 +521,7 @@ export default function ProfileTab({
           cryptoInstructions={cryptoInstructions}
           paymentTimer={paymentTimer}
           onVerifyInvoice={onVerifyInvoice}
+          selectedRentTerm={selectedRentTerm}
         />
       );
     }
@@ -519,6 +531,7 @@ export default function ProfileTab({
           activeOrder={activeOrder}
           paymentDetails={paymentDetails}
           paymentTimer={paymentTimer}
+          selectedRentTerm={selectedRentTerm}
         />
       );
     }

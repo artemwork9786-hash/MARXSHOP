@@ -134,7 +134,7 @@ function ListScreen({ onEdit, onAdd, onAccountsChanged }) {
               {a.image_url && a.image_url !== "/placeholder.svg" ? (
                 <img src={a.image_url} alt="" className="h-12 w-12 rounded-lg object-cover bg-neutral-800 shrink-0" />
               ) : a.video_url ? (
-                <video src={API_URL + a.video_url + "#t=0.001"} preload="metadata" playsInline muted
+                <video src={(a.video_url.startsWith("http") ? a.video_url : API_URL + a.video_url) + "#t=0.001"} preload="metadata" playsInline muted
                   className="h-12 w-12 rounded-lg object-cover bg-neutral-800 shrink-0" />
               ) : (
                 <img src="/placeholder.svg" alt="" className="h-12 w-12 rounded-lg object-cover bg-neutral-800 shrink-0" />

@@ -8,7 +8,7 @@ import ProfileTab from "./components/ProfileTab";
 import { CURRENCIES } from "./data/accounts";
 import { getAccounts, getRates, createOrder, checkOrder, confirmSbp, verifyInvoice, cancelOrder } from "./api";
 
-function ShopTab({ accounts, currency, setCurrency, rates, onRent }) {
+function ShopTab({ accounts, currency, setCurrency, rates, onBuy }) {
   return (
     <>
       <CurrencySwitcher currency={currency} setCurrency={setCurrency} />
@@ -19,7 +19,28 @@ function ShopTab({ accounts, currency, setCurrency, rates, onRent }) {
             account={account}
             currency={currency}
             rates={rates}
-            onRent={() => onRent(account)}
+            category="shop"
+            onBuy={() => onBuy(account)}
+          />
+        ))}
+      </div>
+    </>
+  );
+}
+
+function RentTab({ accounts, currency, setCurrency, rates, onRent }) {
+  return (
+    <>
+      <CurrencySwitcher currency={currency} setCurrency={setCurrency} />
+      <div className="grid grid-cols-1 gap-6 px-4 md:grid-cols-2 lg:grid-cols-3">
+        {accounts.map((account) => (
+          <AccountCard
+            key={account.id}
+            account={account}
+            currency={currency}
+            rates={rates}
+            category="rent"
+            onRent={(acc, term) => onRent(acc, term)}
           />
         ))}
       </div>
@@ -41,9 +62,13 @@ function App() {
   const [credentials, setCredentials] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [rates, setRates] = useState({ usd_to_rub: 90, usd_to_uah: 41 });
+  const [selectedRentTerm, setSelectedRentTerm] = useState(null);
   const mainButtonRef = useRef(null);
   const pollingRef = useRef(null);
   const activeOrderRef = useRef(null);
+
+  const saleAccounts = accounts.filter(a => a.category === "sale");
+  const rentAccounts = accounts.filter(a => a.category === "rent");
 
   // Keep ref in sync
   activeOrderRef.current = activeOrder;
@@ -62,9 +87,9 @@ function App() {
       .catch(() => {});
   }, [refreshAccounts]);
 
-  // Re-fetch accounts when switching to shop tab
+  // Re-fetch accounts when switching to shop or rent tab
   useEffect(() => {
-    if (activeTab === "shop") refreshAccounts();
+    if (activeTab === "shop" || activeTab === "rent") refreshAccounts();
   }, [activeTab, refreshAccounts]);
 
   // Telegram init
@@ -207,8 +232,9 @@ function App() {
   }, [activeOrder, orderStatus, paymentTimer, handleClearOrder]);
 
   // Step 1: Select account
-  const handleRent = useCallback((account) => {
+  const handleRent = useCallback((account, rentTerm) => {
     setActiveOrder(account);
+    setSelectedRentTerm(rentTerm || null);
     setPaymentMethod(null);
     setOrderId(null);
     setPayUrl(null);
@@ -230,6 +256,8 @@ function App() {
           currency,
           method,
           tgInitData,
+          rentTerm: selectedRentTerm?.label || null,
+          rentPrice: selectedRentTerm?.price || null,
         });
 
         setOrderId(res.orderId);
@@ -251,7 +279,7 @@ function App() {
         console.error("Failed to create order:", err);
       }
     },
-    [currency, startPolling]
+    [currency, startPolling, selectedRentTerm]
   );
 
   // Submit invoice ID
@@ -274,7 +302,10 @@ function App() {
       <Header />
       <main className="flex-1 overflow-y-auto pb-24">
         {activeTab === "shop" && (
-          <ShopTab accounts={accounts} currency={currency} setCurrency={setCurrency} rates={rates} onRent={handleRent} />
+          <ShopTab accounts={saleAccounts} currency={currency} setCurrency={setCurrency} rates={rates} onBuy={handleRent} />
+        )}
+        {activeTab === "rent" && (
+          <RentTab accounts={rentAccounts} currency={currency} setCurrency={setCurrency} rates={rates} onRent={handleRent} />
         )}
         {activeTab === "profile" && (
           <ProfileTab
@@ -287,6 +318,7 @@ function App() {
             paymentDetails={paymentDetails}
             cryptoInstructions={cryptoInstructions}
             credentials={credentials}
+            selectedRentTerm={selectedRentTerm}
             onSelectMethod={handleSelectMethod}
             onVerifyInvoice={handleVerifyInvoice}
             onClearOrder={handleClearOrder}
