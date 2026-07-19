@@ -462,7 +462,7 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
       )}
 
       {hasVideo && showExtraInfo && (
-        <img src={account.image_url || `${videoSrc}#t=0.001`} alt="" className="absolute inset-0 w-full h-full object-cover z-10" />
+        <img src={account.image_url || `${videoSrc}#t=0.001`} alt="" className="absolute inset-0 w-full h-full object-cover z-10" style={{ clipPath: "inset(0 round 1rem)" }} />
       )}
 
       {isRent && account.tags?.length > 0 && (
