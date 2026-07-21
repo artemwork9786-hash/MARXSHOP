@@ -5,14 +5,14 @@ import AccountCard from "./components/AccountCard";
 import BottomNav from "./components/BottomNav";
 import InfoTab from "./components/InfoTab";
 import ProfileTab from "./components/ProfileTab";
-import { CURRENCIES } from "./data/accounts";
-import { getAccounts, getRates, createOrder, checkOrder, confirmSbp, verifyInvoice, cancelOrder } from "./api";
+import PaymentFlow from "./components/PaymentFlow";
+import { getAccounts, getRates } from "./api";
 
-function ShopTab({ accounts, currency, setCurrency, rates, onBuy }) {
+function ShopTab({ accounts, currency, setCurrency, rates, onSelectAccount }) {
   return (
     <>
       <CurrencySwitcher currency={currency} setCurrency={setCurrency} />
-      <div className="grid grid-cols-1 gap-6 px-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 px-4 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
         {accounts.map((account) => (
           <AccountCard
             key={account.id}
@@ -20,7 +20,7 @@ function ShopTab({ accounts, currency, setCurrency, rates, onBuy }) {
             currency={currency}
             rates={rates}
             category="shop"
-            onBuy={() => onBuy(account)}
+            onBuy={() => onSelectAccount(account)}
           />
         ))}
       </div>
@@ -28,11 +28,11 @@ function ShopTab({ accounts, currency, setCurrency, rates, onBuy }) {
   );
 }
 
-function RentTab({ accounts, currency, setCurrency, rates, onRent }) {
+function RentTab({ accounts, currency, setCurrency, rates, onSelectAccount, onSelectTerm }) {
   return (
     <>
       <CurrencySwitcher currency={currency} setCurrency={setCurrency} />
-      <div className="grid grid-cols-1 gap-6 px-4 md:grid-cols-2 lg:grid-cols-3">
+      <div className="grid grid-cols-1 gap-4 px-4 md:grid-cols-2 md:gap-6 lg:grid-cols-3">
         {accounts.map((account) => (
           <AccountCard
             key={account.id}
@@ -40,7 +40,7 @@ function RentTab({ accounts, currency, setCurrency, rates, onRent }) {
             currency={currency}
             rates={rates}
             category="rent"
-            onRent={(acc, term) => onRent(acc, term)}
+            onRent={(acc, term) => { onSelectTerm(term); onSelectAccount(acc); }}
           />
         ))}
       </div>
@@ -56,13 +56,13 @@ function App() {
   const [orderStatus, setOrderStatus] = useState(null);
   const [paymentMethod, setPaymentMethod] = useState(null);
   const [orderId, setOrderId] = useState(null);
-  const [payUrl, setPayUrl] = useState(null);
   const [paymentDetails, setPaymentDetails] = useState(null);
   const [cryptoInstructions, setCryptoInstructions] = useState(null);
   const [credentials, setCredentials] = useState(null);
   const [accounts, setAccounts] = useState([]);
   const [rates, setRates] = useState({ usd_to_rub: 90, usd_to_uah: 41 });
   const [selectedRentTerm, setSelectedRentTerm] = useState(null);
+  const [selectedAccount, setSelectedAccount] = useState(null);
   const mainButtonRef = useRef(null);
   const pollingRef = useRef(null);
   const activeOrderRef = useRef(null);
@@ -86,6 +86,29 @@ function App() {
       .then((res) => setRates(res))
       .catch(() => {});
   }, [refreshAccounts]);
+
+  // Polling for real-time account updates (every 5 seconds)
+  useEffect(() => {
+    const interval = setInterval(() => {
+      getAccounts()
+        .then((res) => {
+          if (res.accounts) {
+            setAccounts((prev) => {
+              const newAccounts = res.accounts;
+              // Only update if something changed
+              const changed = newAccounts.some((na, i) => {
+                const pa = prev.find((p) => p.id === na.id);
+                return !pa || pa.busyUntil !== na.busyUntil || pa.status !== na.status;
+              });
+              return changed ? newAccounts : prev;
+            });
+          }
+        })
+        .catch(() => {});
+    }, 5000);
+
+    return () => clearInterval(interval);
+  }, []);
 
   // Re-fetch accounts when switching to shop or rent tab
   useEffect(() => {
@@ -137,7 +160,7 @@ function App() {
     setOrderStatus(null);
     setPaymentMethod(null);
     setOrderId(null);
-    setPayUrl(null);
+
     setPaymentDetails(null);
     setCryptoInstructions(null);
     setCredentials(null);
@@ -216,9 +239,12 @@ function App() {
     };
   }, [activeOrder, orderStatus, paymentMethod, handleMainButtonClick]);
 
+  const paymentTimerRef = useRef(paymentTimer);
+  paymentTimerRef.current = paymentTimer;
+
   // Payment countdown
   useEffect(() => {
-    if (!activeOrder || orderStatus !== "pending" || paymentTimer <= 0) return;
+    if (!activeOrder || orderStatus !== "pending") return;
     const id = setInterval(() => {
       setPaymentTimer((t) => {
         if (t <= 1) {
@@ -229,7 +255,7 @@ function App() {
       });
     }, 1000);
     return () => clearInterval(id);
-  }, [activeOrder, orderStatus, paymentTimer, handleClearOrder]);
+  }, [activeOrder, orderStatus, handleClearOrder]);
 
   // Step 1: Select account
   const handleRent = useCallback((account, rentTerm) => {
@@ -237,7 +263,7 @@ function App() {
     setSelectedRentTerm(rentTerm || null);
     setPaymentMethod(null);
     setOrderId(null);
-    setPayUrl(null);
+
     setPaymentDetails(null);
     setCryptoInstructions(null);
     setOrderStatus(null);
@@ -258,6 +284,7 @@ function App() {
           tgInitData,
           rentTerm: selectedRentTerm?.label || null,
           rentPrice: selectedRentTerm?.price || null,
+          rentDurationMs: selectedRentTerm?.durationMs || null,
         });
 
         setOrderId(res.orderId);
@@ -267,11 +294,11 @@ function App() {
         startPolling(res.orderId);
 
         if (method === "crypto") {
-          setPayUrl(null);
+      
           setPaymentDetails(null);
           setCryptoInstructions(res.instructions);
         } else {
-          setPayUrl(null);
+      
           setCryptoInstructions(null);
           setPaymentDetails(res.paymentDetails);
         }
@@ -298,36 +325,49 @@ function App() {
   );
 
   return (
-    <div className="flex min-h-dvh flex-col bg-[#0A0A0A]">
+    <div className="flex min-h-dvh flex-col bg-[#0A0A0A] overflow-x-hidden">
       <Header />
       <main className="flex-1 overflow-y-auto pb-24">
-        {activeTab === "shop" && (
-          <ShopTab accounts={saleAccounts} currency={currency} setCurrency={setCurrency} rates={rates} onBuy={handleRent} />
-        )}
-        {activeTab === "rent" && (
-          <RentTab accounts={rentAccounts} currency={currency} setCurrency={setCurrency} rates={rates} onRent={handleRent} />
-        )}
-        {activeTab === "profile" && (
-          <ProfileTab
-            activeOrder={activeOrder}
-            paymentTimer={paymentTimer}
+        {selectedAccount ? (
+          <PaymentFlow
+            account={selectedAccount}
             currency={currency}
-            orderStatus={orderStatus}
-            paymentMethod={paymentMethod}
-            payUrl={payUrl}
-            paymentDetails={paymentDetails}
-            cryptoInstructions={cryptoInstructions}
-            credentials={credentials}
-            selectedRentTerm={selectedRentTerm}
-            onSelectMethod={handleSelectMethod}
-            onVerifyInvoice={handleVerifyInvoice}
-            onClearOrder={handleClearOrder}
-            onAccountsChanged={refreshAccounts}
+            rates={rates}
+            onBack={() => { setSelectedAccount(null); refreshAccounts(); }}
+            onStatusChange={refreshAccounts}
+            selectedTerm={selectedRentTerm}
+            onSelectTerm={setSelectedRentTerm}
           />
+        ) : (
+          <>
+            {activeTab === "shop" && (
+              <ShopTab accounts={saleAccounts} currency={currency} setCurrency={setCurrency} rates={rates} onSelectAccount={setSelectedAccount} />
+            )}
+            {activeTab === "rent" && (
+              <RentTab accounts={rentAccounts} currency={currency} setCurrency={setCurrency} rates={rates} onSelectAccount={setSelectedAccount} onSelectTerm={setSelectedRentTerm} />
+            )}
+            {activeTab === "profile" && (
+              <ProfileTab
+                activeOrder={activeOrder}
+                paymentTimer={paymentTimer}
+                currency={currency}
+                orderStatus={orderStatus}
+                paymentMethod={paymentMethod}
+                paymentDetails={paymentDetails}
+                cryptoInstructions={cryptoInstructions}
+                credentials={credentials}
+                selectedRentTerm={selectedRentTerm}
+                onSelectMethod={handleSelectMethod}
+                onVerifyInvoice={handleVerifyInvoice}
+                onClearOrder={handleClearOrder}
+                onAccountsChanged={refreshAccounts}
+              />
+            )}
+            {activeTab === "info" && <InfoTab />}
+          </>
         )}
-        {activeTab === "info" && <InfoTab />}
       </main>
-      <BottomNav active={activeTab} setActive={setActiveTab} />
+      <BottomNav active={activeTab} setActive={(tab) => { setActiveTab(tab); setSelectedAccount(null); }} />
     </div>
   );
 }

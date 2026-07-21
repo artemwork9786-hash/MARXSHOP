@@ -7,7 +7,7 @@ export default function CurrencySwitcher({ currency, setCurrency }) {
         <button
           key={c.code}
           onClick={() => setCurrency(c.code)}
-          className={`flex-1 rounded-lg py-2 text-sm font-semibold tracking-wider transition-all ${
+          className={`flex-1 rounded-lg py-2 text-xs font-semibold tracking-wider transition-all cursor-pointer ${
             currency === c.code
               ? "bg-white text-black shadow-lg"
               : "text-neutral-500 hover:text-neutral-300"

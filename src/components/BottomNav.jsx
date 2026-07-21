@@ -9,8 +9,8 @@ const NAV_ITEMS = [
 
 export default function BottomNav({ active, setActive }) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/5 bg-neutral-900/70 backdrop-blur-md">
-      <div className="mx-auto flex max-w-lg items-center justify-around py-2.5">
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/5 bg-neutral-900/70 backdrop-blur-md" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+      <div className="mx-auto flex max-w-lg items-center justify-around pt-2 pb-1">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;
           const isActive = active === item.id;
@@ -18,7 +18,7 @@ export default function BottomNav({ active, setActive }) {
             <button
               key={item.id}
               onClick={() => setActive(item.id)}
-              className={`flex flex-col items-center gap-0.5 transition-all ${
+              className={`flex flex-col items-center gap-0.5 min-h-[44px] min-w-[44px] justify-center transition-all cursor-pointer ${
                 isActive ? "text-white" : "text-neutral-600"
               }`}
             >

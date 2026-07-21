@@ -1,10 +1,25 @@
 const API_URL = import.meta.env.VITE_API_URL || "http://localhost:5000";
 
+function getTelegramInitData() {
+  try {
+    const data = window.Telegram?.WebApp?.initData || "";
+    if (!data) {
+      console.warn("[TG] initData is empty. Telegram WebApp:", !!window.Telegram?.WebApp);
+    }
+    return data;
+  } catch { return ""; }
+}
+
 async function request(path, options = {}) {
+  const { headers: customHeaders, ...rest } = options;
   const res = await fetch(`${API_URL}${path}`, {
     cache: "no-store",
-    headers: { "Content-Type": "application/json", ...options.headers },
-    ...options,
+    ...rest,
+    headers: {
+      "Content-Type": "application/json",
+      "X-Telegram-Init-Data": getTelegramInitData(),
+      ...customHeaders,
+    },
   });
   if (!res.ok) throw new Error(`API error: ${res.status}`);
   return res.json();
@@ -40,11 +55,60 @@ export function deleteAccount(id) {
   });
 }
 
+export function payForAccount(accountId) {
+  return request("/api/orders/pay", {
+    method: "POST",
+    body: JSON.stringify({ accountId }),
+  });
+}
+
+export function testPay(accountId) {
+  return request("/api/orders/test-pay", {
+    method: "POST",
+    body: JSON.stringify({ accountId }),
+  });
+}
+
+export function getOrderStatus(accountId) {
+  return request(`/api/orders/status/${accountId}`);
+}
+
+export function approveAccount(accountId) {
+  return request("/api/orders/approve", {
+    method: "POST",
+    body: JSON.stringify({ accountId }),
+  });
+}
+
+export function confirmPayment(accountId) {
+  return request("/api/orders/confirm-payment", {
+    method: "POST",
+    body: JSON.stringify({ accountId }),
+  });
+}
+
+export function rejectAccount(accountId) {
+  return request("/api/orders/reject", {
+    method: "POST",
+    body: JSON.stringify({ accountId }),
+  });
+}
+
+export function getAdminOrders() {
+  return request("/api/admin/orders");
+}
+
+export function getMyAccounts() {
+  return request("/api/my-accounts");
+}
+
 export async function uploadVideo(file) {
-  // Step 1: Get presigned S3 URL from server (tiny request through tunnel)
   const presignRes = await fetch(`${API_URL}/api/presign-upload`, {
     method: "POST",
-    headers: { "Content-Type": "application/json" },
+    headers: {
+      "Content-Type": "application/json",
+      "X-Telegram-Init-Data": getTelegramInitData(),
+    },
     body: JSON.stringify({ filename: file.name, contentType: file.type || "video/mp4" }),
     cache: "no-store",
   });
@@ -94,4 +158,8 @@ export function cancelOrder(accountId) {
     method: "POST",
     body: JSON.stringify({ accountId }),
   });
+}
+
+export function getConfig() {
+  return request("/api/config");
 }

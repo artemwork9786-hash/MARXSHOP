@@ -1,20 +1,31 @@
-import { useState } from "react";
-import { User, Clock, AlertTriangle, Store, CheckCircle, Copy, CreditCard, ExternalLink } from "lucide-react";
-import { CURRENCIES } from "../data/accounts";
+import { useState, useEffect, useCallback } from "react";
+import { User } from "lucide-react";
 import AdminPanel from "./AdminPanel";
+import { getMyAccounts } from "../api";
 
-function formatTime(seconds) {
-  const m = Math.floor(seconds / 60);
-  const s = seconds % 60;
+function formatCountdown(ms) {
+  if (ms <= 0) return "00:00";
+  const totalSec = Math.floor(ms / 1000);
+  const h = Math.floor(totalSec / 3600);
+  const m = Math.floor((totalSec % 3600) / 60);
+  const s = totalSec % 60;
+  if (h > 0) return `${h}ч ${String(m).padStart(2, "0")}м ${String(s).padStart(2, "0")}с`;
   return `${String(m).padStart(2, "0")}:${String(s).padStart(2, "0")}`;
+}
+
+function formatMskTime(ts) {
+  if (!ts) return "--:--";
+  const d = new Date(ts);
+  const mskOffset = 3 * 60;
+  const localOffset = d.getTimezoneOffset();
+  const msk = new Date(d.getTime() + (localOffset + mskOffset) * 60 * 1000);
+  return `${String(msk.getUTCHours()).padStart(2, "0")}:${String(msk.getUTCMinutes()).padStart(2, "0")}`;
 }
 
 function getTgUser() {
   try {
     return window.Telegram?.WebApp?.initDataUnsafe?.user || null;
-  } catch {
-    return null;
-  }
+  } catch { return null; }
 }
 
 function checkIsAdmin(user) {
@@ -22,520 +33,114 @@ function checkIsAdmin(user) {
   return user.username === "verykindandfriendlyguy";
 }
 
-function handleCopy(text) {
-  navigator.clipboard.writeText(text);
-}
+// ─── User's Accounts List ────────────────────────────────────────────────────
 
-// ─── Payment Method Selector ──────────────────────────────────────────────────
+function UserAccounts() {
+  const [accounts, setAccounts] = useState([]);
+  const [loading, setLoading] = useState(true);
+  const [timeNow, setTimeNow] = useState(Date.now());
 
-function PaymentMethodSelector({ onSelect, selectedRentTerm, activeOrder }) {
-  const termLabel = selectedRentTerm ? ` (${selectedRentTerm.label} — ${selectedRentTerm.price} ₽)` : "";
-  const orderType = activeOrder?.category === "rent" ? "Аренда" : "Покупка";
-
-  return (
-    <div className="px-4 pt-6 pb-6">
-      <h2 className="text-lg font-bold text-white tracking-wide text-center mb-2">
-        Выберите способ оплаты
-      </h2>
-      <p className="text-sm text-neutral-500 text-center mb-4">
-        {orderType}: {activeOrder?.title}{termLabel}
-      </p>
-      <div className="space-y-3">
-        <button
-          onClick={() => onSelect("crypto")}
-          className="flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-[#1A1A1A] p-5 text-left transition-all hover:border-white/20 active:scale-[0.98]"
-        >
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-blue-900/30">
-            <ExternalLink size={22} className="text-blue-400" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-white">Криптовалюта (CryptoBot)</p>
-            <p className="mt-0.5 text-xs text-neutral-500">Оплата через Telegram CryptoBot</p>
-          </div>
-        </button>
-        <button
-          onClick={() => onSelect("sbp")}
-          className="flex w-full items-center gap-4 rounded-2xl border border-white/10 bg-[#1A1A1A] p-5 text-left transition-all hover:border-white/20 active:scale-[0.98]"
-        >
-          <div className="flex h-12 w-12 shrink-0 items-center justify-center rounded-xl bg-green-900/30">
-            <CreditCard size={22} className="text-green-400" />
-          </div>
-          <div>
-            <p className="text-sm font-bold text-white">Система быстрых платежей (СБП)</p>
-            <p className="mt-0.5 text-xs text-neutral-500">Перевод на карту по QR-коду</p>
-          </div>
-        </button>
-      </div>
-    </div>
-  );
-}
-
-// ─── Crypto Payment View (redirected to CryptoBot) ───────────────────────────
-
-// ─── SBP Payment View ────────────────────────────────────────────────────────
-
-function SbpPaymentView({ activeOrder, paymentDetails, paymentTimer, selectedRentTerm }) {
-  const isExpired = paymentTimer <= 0;
-
-  if (isExpired) {
-    return (
-      <div className="flex flex-col items-center px-4 pt-10 pb-6">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-900/30">
-          <AlertTriangle size={32} className="text-red-500" />
-        </div>
-        <h2 className="mt-4 text-lg font-bold text-white tracking-wide">
-          Время оплаты истекло!
-        </h2>
-        <p className="mt-2 text-center text-sm text-neutral-500">
-          Бронь автоматически снята. Выберите аккаунт заново.
-        </p>
-      </div>
-    );
-  }
-
-  if (!paymentDetails) return null;
-
-  const termLabel = selectedRentTerm ? ` (${selectedRentTerm.label})` : "";
-
-  return (
-    <div className="px-4 pt-6 pb-6">
-      <div className="rounded-2xl border border-white/5 bg-[#1A1A1A] p-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-900/30">
-            <CreditCard size={20} className="text-green-400" />
-          </div>
-          <div>
-            <p className="text-[11px] uppercase tracking-wider text-green-400">
-              Оплата через СБП
-            </p>
-            <h2 className="text-sm font-bold text-white">
-              {activeOrder.category === "rent" ? "Аренда" : "Покупка"}: {activeOrder.title}{termLabel}
-            </h2>
-          </div>
-        </div>
-      </div>
-
-      {/* Payment Details */}
-      <div className="mt-4 rounded-2xl border border-white/5 bg-[#1A1A1A] p-5">
-        <h3 className="text-sm font-bold text-white mb-4">
-          Данные для перевода
-        </h3>
-
-        {/* Recipient */}
-        <div className="space-y-3">
-          <div className="flex items-center justify-between rounded-xl bg-neutral-800/50 px-4 py-3">
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-neutral-500">Получатель</p>
-              <p className="text-sm text-white">{paymentDetails.recipientName}</p>
-            </div>
-            <button
-              onClick={() => handleCopy(paymentDetails.recipientName)}
-              className="text-neutral-500 hover:text-white transition-colors"
-            >
-              <Copy size={16} />
-            </button>
-          </div>
-
-          {/* Card Number */}
-          <div className="flex items-center justify-between rounded-xl bg-neutral-800/50 px-4 py-3">
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-neutral-500">Номер карты</p>
-              <p className="text-sm font-mono text-white">{paymentDetails.cardNumber}</p>
-            </div>
-            <button
-              onClick={() => handleCopy(paymentDetails.cardNumber.replace(/\s/g, ""))}
-              className="text-neutral-500 hover:text-white transition-colors"
-            >
-              <Copy size={16} />
-            </button>
-          </div>
-
-          {/* Amount */}
-          <div className="flex items-center justify-between rounded-xl bg-neutral-800/50 px-4 py-3">
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-neutral-500">Сумма</p>
-              <p className="text-sm font-bold text-white">{paymentDetails.amount.toLocaleString("ru-RU")} ₽</p>
-            </div>
-            <button
-              onClick={() => handleCopy(String(paymentDetails.amount))}
-              className="text-neutral-500 hover:text-white transition-colors"
-            >
-              <Copy size={16} />
-            </button>
-          </div>
-
-          {/* Comment */}
-          <div className="flex items-center justify-between rounded-xl bg-yellow-900/20 border border-yellow-900/30 px-4 py-3">
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-yellow-500/80">Комментарий (обязательно)</p>
-              <p className="text-sm font-mono font-bold text-yellow-400">{paymentDetails.comment}</p>
-            </div>
-            <button
-              onClick={() => handleCopy(paymentDetails.comment)}
-              className="text-yellow-500/80 hover:text-yellow-400 transition-colors"
-            >
-              <Copy size={16} />
-            </button>
-          </div>
-        </div>
-
-        <div className="mt-4 rounded-xl bg-neutral-800/30 px-4 py-3">
-          <p className="text-xs text-neutral-500 leading-relaxed">
-            1. Откройте приложение банка
-            <br />
-            2. Переведите точную сумму на указанную карту
-            <br />
-            3. Укажите комментарий к переводу
-            <br />
-            4. Нажмите "Я оплатил" внизу экрана
-          </p>
-        </div>
-      </div>
-
-      {/* Timer */}
-      <div className="mt-4 flex flex-col items-center rounded-2xl border border-white/5 bg-[#1A1A1A] p-5">
-        <p className="text-[11px] uppercase tracking-wider text-neutral-500">
-          Осталось времени
-        </p>
-        <div className="mt-2 text-4xl font-bold tabular-nums text-white tracking-widest">
-          {formatTime(paymentTimer)}
-        </div>
-        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
-          <div
-            className="h-full rounded-full bg-white transition-all duration-1000"
-            style={{ width: `${(paymentTimer / 600) * 100}%` }}
-          />
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Awaiting Verification View ──────────────────────────────────────────────
-
-function AwaitingVerificationView({ activeOrder }) {
-  const formattedPrice = activeOrder.price.toLocaleString("ru-RU");
-
-  return (
-    <div className="flex flex-col items-center px-4 pt-10 pb-6">
-      <div className="flex h-16 w-16 items-center justify-center rounded-full bg-yellow-900/30">
-        <Clock size={32} className="text-yellow-500" />
-      </div>
-      <h2 className="mt-4 text-lg font-bold text-white tracking-wide">
-        Ожидает подтверждения
-      </h2>
-      <p className="mt-2 text-center text-sm text-neutral-500">
-        Ваш платёж на сумму {formattedPrice} ₽ обрабатывается.
-        <br />
-        После подтверждения данныe для входа появятся здесь.
-      </p>
-    </div>
-  );
-}
-
-// ─── Paid View ───────────────────────────────────────────────────────────────
-
-function PaidView({ activeOrder, currency, credentials }) {
-  const formattedPrice = activeOrder.price.toLocaleString("ru-RU");
-  const login = credentials?.login || "—";
-  const password = credentials?.password || "—";
-
-  return (
-    <div className="px-4 pt-6 pb-6">
-      <div className="rounded-2xl border border-white/5 bg-[#1A1A1A] p-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-green-900/30">
-            <CheckCircle size={20} className="text-green-500" />
-          </div>
-          <div>
-            <p className="text-[11px] uppercase tracking-wider text-green-500">
-              Оплачено
-            </p>
-            <h2 className="text-sm font-bold text-white">
-              Аренда: {activeOrder.title}
-            </h2>
-          </div>
-        </div>
-        <div className="mt-4 border-t border-neutral-800 pt-4">
-          <div className="flex items-center justify-between">
-            <span className="text-sm text-neutral-500">Сумма</span>
-            <span className="text-sm font-bold text-white">
-              {formattedPrice} ₽
-            </span>
-          </div>
-        </div>
-      </div>
-
-      <div className="mt-4 rounded-2xl border border-white/5 bg-[#1A1A1A] p-5">
-        <h3 className="text-sm font-bold text-white mb-3">
-          Данные для входа
-        </h3>
-        <div className="space-y-3">
-          <div className="flex items-center justify-between rounded-xl bg-neutral-800/50 px-4 py-3">
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-neutral-500">Логин</p>
-              <p className="text-sm font-mono text-white">{login}</p>
-            </div>
-            <button
-              onClick={() => handleCopy(login)}
-              className="text-neutral-500 hover:text-white transition-colors"
-            >
-              <Copy size={16} />
-            </button>
-          </div>
-          <div className="flex items-center justify-between rounded-xl bg-neutral-800/50 px-4 py-3">
-            <div>
-              <p className="text-[10px] uppercase tracking-wider text-neutral-500">Пароль</p>
-              <p className="text-sm font-mono text-white">{password}</p>
-            </div>
-            <button
-              onClick={() => handleCopy(password)}
-              className="text-neutral-500 hover:text-white transition-colors"
-            >
-              <Copy size={16} />
-            </button>
-          </div>
-        </div>
-        <div className="mt-4 rounded-xl bg-yellow-900/20 border border-yellow-900/30 px-4 py-3">
-          <p className="text-xs text-yellow-500/80 leading-relaxed">
-            Смените пароль сразу после входа. Не передавайте данные третьим лицам.
-          </p>
-        </div>
-      </div>
-    </div>
-  );
-}
-
-// ─── Empty Profile ───────────────────────────────────────────────────────────
-
-function EmptyProfile({ onAccountsChanged }) {
-  const user = getTgUser();
-  const hasUser = !!user;
-  const isAdmin = checkIsAdmin(user);
-  const isBrowser = !hasUser;
-  const displayName = hasUser
-    ? user.first_name + (user.username ? ` @${user.username}` : "")
-    : "Гость";
-
-  if (isAdmin || isBrowser) {
-    return (
-      <div className="px-4 pt-6 pb-6">
-        <AdminPanel onAccountsChanged={onAccountsChanged} />
-      </div>
-    );
-  }
-
-  return (
-    <div className="flex flex-col items-center px-4 pt-10 pb-6">
-      {hasUser && user.photo_url ? (
-        <img
-          src={user.photo_url}
-          alt="avatar"
-          className="h-20 w-20 rounded-full object-cover border-2 border-neutral-700"
-        />
-      ) : (
-        <div className="flex h-20 w-20 items-center justify-center rounded-full bg-neutral-800">
-          <User size={36} className="text-neutral-500" />
-        </div>
-      )}
-      <h2 className="mt-4 text-lg font-bold text-white tracking-wide">
-        {displayName}
-      </h2>
-      {!hasUser && (
-        <>
-          <p className="mt-1 text-xs text-neutral-500">
-            Войдите через Telegram, чтобы управлять арендами
-          </p>
-          <button className="mt-6 rounded-xl bg-white px-8 py-3 text-sm font-bold text-black uppercase tracking-wider transition-all hover:bg-neutral-200 active:scale-95">
-            Войти через Telegram
-          </button>
-        </>
-      )}
-
-      <div className="mt-10 flex flex-col items-center rounded-2xl border border-white/5 bg-[#1A1A1A] p-6">
-        <Store size={28} className="text-neutral-600" />
-        <p className="mt-3 text-center text-sm text-neutral-500">
-          У вас нет активных заказов.
-          <br />
-          Перейдите в Магазин, чтобы арендовать аккаунт.
-        </p>
-      </div>
-    </div>
-  );
-}
-
-// ─── Crypto Manual Payment View ──────────────────────────────────────────────
-
-function CryptoManualView({ activeOrder, cryptoInstructions, paymentTimer, onVerifyInvoice, selectedRentTerm }) {
-  const [invoiceId, setInvoiceId] = useState("");
-  const [submitting, setSubmitting] = useState(false);
-  const isExpired = paymentTimer <= 0;
-
-  const handleSubmit = async () => {
-    if (!invoiceId.trim()) return;
-    setSubmitting(true);
+  const load = useCallback(async () => {
     try {
-      await onVerifyInvoice(invoiceId.trim());
-    } finally {
-      setSubmitting(false);
-    }
+      const res = await getMyAccounts();
+      setAccounts(res.accounts || []);
+    } catch {}
+    setLoading(false);
+  }, []);
+
+  useEffect(() => { load(); }, [load]);
+
+  useEffect(() => {
+    const id = setInterval(() => { load(); setTimeNow(Date.now()); }, 3000);
+    return () => clearInterval(id);
+  }, [load]);
+
+  const statusColors = {
+    waiting_payment: "text-yellow-400",
+    paid_verifying: "text-blue-400",
+    active: "text-green-400",
   };
 
-  const termLabel = selectedRentTerm ? ` (${selectedRentTerm.label})` : "";
-
-  if (isExpired) {
-    return (
-      <div className="flex flex-col items-center px-4 pt-10 pb-6">
-        <div className="flex h-16 w-16 items-center justify-center rounded-full bg-red-900/30">
-          <AlertTriangle size={32} className="text-red-500" />
-        </div>
-        <h2 className="mt-4 text-lg font-bold text-white tracking-wide">
-          Время оплаты истекло!
-        </h2>
-        <p className="mt-2 text-center text-sm text-neutral-500">
-          Бронь автоматически снята. Выберите аккаунт заново.
-        </p>
-      </div>
-    );
-  }
+  const statusLabels = {
+    waiting_payment: "Ожидает оплаты",
+    paid_verifying: "На проверке",
+    active: "Аренда активна",
+  };
 
   return (
-    <div className="px-4 pt-6 pb-6">
-      <div className="rounded-2xl border border-white/5 bg-[#1A1A1A] p-5">
-        <div className="flex items-center gap-3">
-          <div className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full bg-blue-900/30">
-            <ExternalLink size={20} className="text-blue-400" />
-          </div>
-          <div>
-            <p className="text-[11px] uppercase tracking-wider text-blue-400">
-              Оплата через CryptoBot
-            </p>
-            <h2 className="text-sm font-bold text-white">
-              {activeOrder.category === "rent" ? "Аренда" : "Покупка"}: {activeOrder.title}{termLabel}
-            </h2>
-          </div>
+    <div className="mx-4 mt-6 rounded-2xl border border-white/5 bg-[#1A1A1A] p-4">
+      <div className="flex items-center gap-2.5 mb-4">
+        <div className="flex h-8 w-8 items-center justify-center rounded-lg bg-white/10">
+          <User size={16} className="text-white" />
+        </div>
+        <div>
+          <h3 className="text-sm font-bold text-white tracking-wide uppercase">Мои аккаунты</h3>
+          <p className="text-[10px] text-neutral-500 tracking-wider uppercase">Купленные и арендованные</p>
         </div>
       </div>
 
-      {/* Instructions */}
-      <div className="mt-4 rounded-2xl border border-white/5 bg-[#1A1A1A] p-5">
-        <h3 className="text-sm font-bold text-white mb-3">
-          Как оплатить
-        </h3>
-        <ol className="space-y-2">
-          {cryptoInstructions.steps.map((step, i) => (
-            <li key={i} className="flex items-start gap-2.5 text-[13px] leading-relaxed text-neutral-400">
-              <span className="mt-0.5 flex h-5 w-5 shrink-0 items-center justify-center rounded-full bg-neutral-800 text-[10px] font-bold text-white">
-                {i + 1}
-              </span>
-              {step}
-            </li>
+      {loading ? (
+        <p className="text-xs text-neutral-500">Загрузка...</p>
+      ) : accounts.length === 0 ? (
+        <p className="text-xs text-neutral-500">У вас пока нет аккаунтов</p>
+      ) : (
+        <div className="space-y-3">
+          {accounts.map(a => (
+            <div key={a.id} className="rounded-xl bg-[#0A0A0A] border border-white/5 p-4">
+              <div className="flex items-center justify-between">
+                <div className="flex-1 min-w-0">
+                  <p className="text-sm font-bold text-white truncate">{a.title}</p>
+                  <p className={`text-[10px] mt-0.5 ${statusColors[a.status] || "text-neutral-500"}`}>
+                    {statusLabels[a.status] || a.status}
+                  </p>
+                </div>
+                {a.thumbnail_url && (
+                  <img src={a.thumbnail_url} alt="" className="h-10 w-10 rounded-lg object-cover ml-3" />
+                )}
+              </div>
+
+              {a.status === "active" && (
+                <div className="mt-3 space-y-2">
+                  <div className="rounded-lg bg-white/5 border border-white/10 p-3">
+                    <p className="text-sm text-neutral-300 text-center">
+                      Модератор свяжется с вами для передачи данных
+                    </p>
+                  </div>
+                  <div className="text-center">
+                    <p className="text-[10px] uppercase tracking-wider text-neutral-500">Осталось времени</p>
+                    <p className="text-xl font-bold text-white tabular-nums">
+                      {a.rent_expires_at ? formatCountdown(Math.max(0, a.rent_expires_at - timeNow)) : "—"}
+                    </p>
+                    <p className="text-[10px] text-neutral-500">До {formatMskTime(a.rent_expires_at)} МСК</p>
+                  </div>
+                </div>
+              )}
+
+              {a.status === "waiting_payment" && (
+                <p className="mt-2 text-[10px] text-yellow-400">Ожидает оплаты</p>
+              )}
+
+              {a.status === "paid_verifying" && (
+                <p className="mt-2 text-[10px] text-blue-400">Оплата получена. Ожидаем проверки модератором.</p>
+              )}
+            </div>
           ))}
-        </ol>
-      </div>
-
-      {/* Invoice ID Input */}
-      <div className="mt-4 rounded-2xl border border-white/5 bg-[#1A1A1A] p-5">
-        <h3 className="text-sm font-bold text-white mb-3">
-          Вставьте Invoice ID
-        </h3>
-        <input
-          type="text"
-          placeholder="Invoice ID из чека CryptoBot"
-          value={invoiceId}
-          onChange={(e) => setInvoiceId(e.target.value)}
-          className="w-full rounded-xl bg-[#0A0A0A] border border-white/10 px-4 py-3 text-sm text-white font-mono placeholder-neutral-600 outline-none focus:border-white/30 transition-colors"
-        />
-        <button
-          onClick={handleSubmit}
-          disabled={!invoiceId.trim() || submitting}
-          className="mt-3 w-full rounded-xl bg-white py-3 text-sm font-bold text-black uppercase tracking-wider transition-all active:scale-[0.98] disabled:opacity-40 disabled:active:scale-100"
-        >
-          {submitting ? "Отправка..." : "Подтвердить оплату"}
-        </button>
-      </div>
-
-      {/* Timer */}
-      <div className="mt-4 flex flex-col items-center rounded-2xl border border-white/5 bg-[#1A1A1A] p-5">
-        <p className="text-[11px] uppercase tracking-wider text-neutral-500">
-          Осталось времени
-        </p>
-        <div className="mt-2 text-4xl font-bold tabular-nums text-white tracking-widest">
-          {formatTime(paymentTimer)}
         </div>
-        <div className="mt-3 h-1.5 w-full overflow-hidden rounded-full bg-neutral-800">
-          <div
-            className="h-full rounded-full bg-white transition-all duration-1000"
-            style={{ width: `${(paymentTimer / 600) * 100}%` }}
-          />
-        </div>
-      </div>
+      )}
+
     </div>
   );
 }
 
 // ─── Main ProfileTab ─────────────────────────────────────────────────────────
 
-export default function ProfileTab({
-  activeOrder,
-  paymentTimer,
-  currency,
-  orderStatus,
-  paymentMethod,
-  payUrl,
-  paymentDetails,
-  cryptoInstructions,
-  credentials,
-  selectedRentTerm,
-  onSelectMethod,
-  onVerifyInvoice,
-  onClearOrder,
-  onAccountsChanged,
-}) {
-  // No active order — show empty profile
-  if (!activeOrder) {
-    return <EmptyProfile onAccountsChanged={onAccountsChanged} />;
+export default function ProfileTab({ onAccountsChanged }) {
+  const tgUser = getTgUser();
+  const isAdmin = checkIsAdmin(tgUser);
+
+  if (isAdmin) {
+    return <AdminPanel onAccountsChanged={onAccountsChanged} />;
   }
 
-  // Payment method not yet chosen — show selector
-  if (!paymentMethod && orderStatus === null) {
-    return <PaymentMethodSelector onSelect={onSelectMethod} selectedRentTerm={selectedRentTerm} activeOrder={activeOrder} />;
-  }
-
-  // Paid — show credentials
-  if (orderStatus === "paid") {
-    return <PaidView activeOrder={activeOrder} currency={currency} credentials={credentials} />;
-  }
-
-  // Awaiting verification
-  if (orderStatus === "awaiting_verification") {
-    return <AwaitingVerificationView activeOrder={activeOrder} currency={currency} />;
-  }
-
-  // Pending — show appropriate payment view
-  if (orderStatus === "pending") {
-    if (paymentMethod === "crypto" && cryptoInstructions) {
-      return (
-        <CryptoManualView
-          activeOrder={activeOrder}
-          cryptoInstructions={cryptoInstructions}
-          paymentTimer={paymentTimer}
-          onVerifyInvoice={onVerifyInvoice}
-          selectedRentTerm={selectedRentTerm}
-        />
-      );
-    }
-    if (paymentMethod === "sbp") {
-      return (
-        <SbpPaymentView
-          activeOrder={activeOrder}
-          paymentDetails={paymentDetails}
-          paymentTimer={paymentTimer}
-          selectedRentTerm={selectedRentTerm}
-        />
-      );
-    }
-  }
-
-  return <EmptyProfile />;
+  return <UserAccounts />;
 }

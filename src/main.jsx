@@ -11,15 +11,16 @@ const STORAGE_KEY = "marxshop_build_id";
 try {
   const prevBuild = localStorage.getItem(STORAGE_KEY);
   if (prevBuild && prevBuild !== BUILD_ID) {
-    // New version deployed — force hard reload
     localStorage.setItem(STORAGE_KEY, BUILD_ID);
-    window.location.reload(true);
-    // Stop rendering to avoid flash of old content
-    throw new Error("Cache busting — reloading");
+    // Don't hard reload in Telegram Mini App — it loses WebApp context
+    const isTelegram = !!window.Telegram?.WebApp;
+    if (!isTelegram) {
+      window.location.reload(true);
+      throw new Error("Cache busting — reloading");
+    }
   }
   localStorage.setItem(STORAGE_KEY, BUILD_ID);
 } catch (e) {
-  // If localStorage is unavailable (private mode), just continue
   if (e.message !== "Cache busting — reloading") {
     console.warn("[CACHE-BUST]", e.message);
   }
