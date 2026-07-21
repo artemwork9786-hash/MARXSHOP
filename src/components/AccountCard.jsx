@@ -595,7 +595,7 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
   }, []);
 
   return (
-    <div className="relative rounded-2xl border border-white/5 bg-[#1A1A1A] shadow-2xl shadow-black/80 overflow-hidden">
+    <div className="relative rounded-2xl border border-white/5 bg-[#1A1A1A] shadow-2xl shadow-black/80" style={{ clipPath: "inset(0 round 1rem)" }}>
       {hasVideo ? (
         <GlassPlayer src={videoSrc} poster={posterSrc || undefined} title={account.title} statusLabel={statusLabel} statusIsAvailable={statusIsAvailable} videoHidden={showExtraInfo} onFullscreenChange={setIsCardFullscreen} initialDuration={account.duration} />
       ) : (

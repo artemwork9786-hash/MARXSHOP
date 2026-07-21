@@ -4,17 +4,97 @@ const express = require("express");
 const cors = require("cors");
 const path = require("path");
 const fs = require("fs");
-const multer = require("multer");
+const http = require("http");
+const https = require("https");
+const { WebSocketServer } = require("ws");
 const storage = require("./lib/storage");
 const cryptoPay = require("./lib/crypto-pay");
 const { S3Client, PutObjectCommand, DeleteObjectCommand } = require("@aws-sdk/client-s3");
 const Busboy = require("busboy");
 const crypto = require("crypto");
+const { execFile } = require("child_process");
+const { promisify } = require("util");
 const ycS3 = require("./lib/yc-s3");
+
+const execFileAsync = promisify(execFile);
+
+async function extractThumbnail(videoUrl) {
+  const tmpPath = `/tmp/thumb-${Date.now()}.jpg`;
+  try {
+    await execFileAsync("ffmpeg", [
+      "-y", "-i", videoUrl,
+      "-ss", "0.1", "-vframes", "1",
+      "-vf", "scale=640:-1",
+      "-q:v", "5",
+      tmpPath,
+    ], { timeout: 30000 });
+    const fs = require("fs");
+    const buf = fs.readFileSync(tmpPath);
+    fs.unlinkSync(tmpPath);
+    return buf;
+  } catch (err) {
+    console.error("[THUMB] Extract error:", err.message);
+    try { require("fs").unlinkSync(tmpPath); } catch {}
+    return null;
+  }
+}
+
+async function generateThumbnail(videoUrl) {
+  if (!ycS3.isConfigured() || !videoUrl) return null;
+  const buf = await extractThumbnail(videoUrl);
+  if (!buf) return null;
+  const key = `thumbnails/${Date.now()}-${crypto.randomBytes(6).toString("hex")}.jpg`;
+  try {
+    const { PutObjectCommand } = require("@aws-sdk/client-s3");
+    await ycS3.s3.send(new PutObjectCommand({
+      Bucket: process.env.YC_BUCKET || "marx-shop-videos",
+      Key: key,
+      Body: buf,
+      ContentType: "image/jpeg",
+      ACL: "public-read",
+    }));
+    const url = ycS3.publicUrlForKey(key);
+    console.log(`[THUMB] Generated: ${url}`);
+    return url;
+  } catch (err) {
+    console.error("[THUMB] Upload error:", err.message);
+    return null;
+  }
+}
+
+async function extractDuration(videoUrl) {
+  if (!videoUrl) return null;
+  try {
+    const { stdout } = await execFileAsync("ffprobe", [
+      "-v", "error",
+      "-show_entries", "format=duration",
+      "-of", "default=noprint_wrappers=1:nokey=1",
+      videoUrl,
+    ], { timeout: 15000 });
+    const seconds = parseFloat(stdout.trim());
+    return isNaN(seconds) ? null : Math.round(seconds);
+  } catch (err) {
+    console.error("[DURATION] Extract error:", err.message);
+    return null;
+  }
+}
 
 const app = express();
 const PORT = process.env.PORT || 8080;
 const isServerless = process.env.NODE_ENV === "production" && !process.env.DATA_DIR;
+
+// ─── WebSocket ───────────────────────────────────────────────────────────────
+
+const server = http.createServer(app);
+const wss = new WebSocketServer({ server });
+
+function broadcastAccountUpdate(accountId, busyUntil) {
+  const msg = JSON.stringify({ type: "account:update", accountId, busyUntil });
+  wss.clients.forEach((client) => {
+    if (client.readyState === 1) client.send(msg);
+  });
+  console.log(`[WS] Broadcast account update: ${accountId}, busyUntil: ${busyUntil}`);
+}
 
 // ─── JSON file-based storage for accounts ────────────────────────────────────
 
@@ -29,57 +109,175 @@ const DEFAULT_ACCOUNTS = [
   {
     id: "marx-vip-001", title: "MARX VIP #1", price: 23000,
     status: "В наличии",
-    video_url: "", image_url: "/placeholder.svg",
+    video_url: "", image_url: "/placeholder.svg", thumbnail_url: null,
   },
   {
     id: "marx-vip-002", title: "MARX VIP #2", price: 18500,
     status: "Занят",
-    video_url: "", image_url: "/placeholder.svg",
+    video_url: "", image_url: "/placeholder.svg", thumbnail_url: null,
   },
   {
     id: "marx-vip-003", title: "MARX VIP #3", price: 31000,
     status: "В наличии",
-    video_url: "", image_url: "/placeholder.svg",
+    video_url: "", image_url: "/placeholder.svg", thumbnail_url: null,
   },
 ];
 
-function loadAccounts() {
-  ensureDataDir();
+function extractS3Key(videoUrl) {
+  if (!videoUrl || !videoUrl.includes("storage.yandexcloud.net")) return null;
+  const match = videoUrl.match(/\/videos\/.+/);
+  return match ? match[0].slice(1) : null;
+}
+
+function parseLabelToMs(label) {
+  if (!label) return 0;
+  let ms = 0;
+  const dayMatch = label.match(/(\d+)\s*(дн|день|дня|дней)/i);
+  const hourMatch = label.match(/(\d+)\s*(ч|час|часа|часов)/i);
+  const minMatch = label.match(/(\d+)\s*(м|мин|минут|минуты)/i);
+  if (dayMatch) ms += parseInt(dayMatch[1]) * 86400 * 1000;
+  if (hourMatch) ms += parseInt(hourMatch[1]) * 3600 * 1000;
+  if (minMatch) ms += parseInt(minMatch[1]) * 60 * 1000;
+  return ms;
+}
+
+let cachedAccounts = null;
+let needsMigration = false;
+
+async function loadAccounts() {
   try {
-    if (fs.existsSync(PRODUCTS_FILE)) {
-      const raw = fs.readFileSync(PRODUCTS_FILE, "utf-8");
-      const parsed = JSON.parse(raw);
-      if (Array.isArray(parsed) && parsed.length > 0) {
-        parsed.forEach(a => {
-          if (!a.category) a.category = "sale";
-          if (!a.rentTerms) a.rentTerms = [];
-          if (!a.tags) a.tags = [];
-          // Миграция: extraInfo → description
-          if (!a.description && a.extraInfo?.length) {
-            a.description = { title: "Дополнительная информация:", content: a.extraInfo.join("\n") };
+    const data = await ycS3.readJson(ycS3.PRODUCTS_KEY);
+    if (Array.isArray(data) && data.length > 0) {
+      let migrated = false;
+      data.forEach(a => {
+        if (!a.category) { a.category = "sale"; migrated = true; }
+        if (!a.rentTerms) { a.rentTerms = []; migrated = true; }
+        if (!a.tags) { a.tags = []; migrated = true; }
+        if (!a.description && a.extraInfo?.length) {
+          a.description = { title: "Дополнительная информация:", content: a.extraInfo.join("\n") };
+          migrated = true;
+        }
+        if (typeof a.description === "string") {
+          a.description = { title: "", content: a.description };
+          migrated = true;
+        }
+        if (!a.description) { a.description = null; migrated = true; }
+        if (a.duration === undefined) { a.duration = null; migrated = true; }
+        if (a.thumbnail_url === undefined) { a.thumbnail_url = null; migrated = true; }
+        if (a.order_id === undefined) { a.order_id = null; migrated = true; }
+        if (a.rent_started_at === undefined) { a.rent_started_at = null; migrated = true; }
+        if (a.rent_expires_at === undefined) { a.rent_expires_at = null; migrated = true; }
+        if (a.telegram_user_id === undefined) { a.telegram_user_id = null; migrated = true; }
+        if (a.telegram_username === undefined) { a.telegram_username = null; migrated = true; }
+        // Clean up stale order data if status is available
+        if (a.status === "available" || a.status === "busy") {
+          if (a.order_id && a.status === "available") { a.order_id = null; migrated = true; }
+          if (a.rent_started_at && a.status === "available") { a.rent_started_at = null; migrated = true; }
+          if (a.rent_expires_at && a.status === "available") { a.rent_expires_at = null; migrated = true; }
+          if (a.payment_deadline && a.status === "available") { a.payment_deadline = null; migrated = true; }
+          if (a.paid_at && a.status === "available") { a.paid_at = null; migrated = true; }
+          if (a.telegram_user_id && a.status === "available") { a.telegram_user_id = null; migrated = true; }
+          if (a.telegram_username && a.status === "available") { a.telegram_username = null; migrated = true; }
+        }
+        if (a.status === "В наличии") { a.status = "available"; migrated = true; }
+        if (a.status === "Занят") { a.status = "waiting_payment"; migrated = true; }
+        // Migrate rentTerms: label → durationMs
+        if (a.rentTerms && Array.isArray(a.rentTerms)) {
+          for (const term of a.rentTerms) {
+            if (!term.durationMs && term.label) {
+              term.durationMs = parseLabelToMs(term.label);
+              migrated = true;
+            }
           }
-          // Миграция: description (строка) → description (объект)
-          if (typeof a.description === "string") {
-            a.description = { title: "", content: a.description };
+        }
+      });
+      if (migrated) await ycS3.writeJson(ycS3.PRODUCTS_KEY, data);
+
+      // Background: extract duration for accounts without it
+      const needsDuration = data.filter(a => a.video_url && !a.duration);
+      if (needsDuration.length > 0) {
+        (async () => {
+          for (const a of needsDuration) {
+            try {
+              const dur = await extractDuration(a.video_url);
+              if (dur) {
+                const accs = await loadAccounts();
+                const acc = accs.find(x => x.id === a.id);
+                if (acc && !acc.duration) { acc.duration = dur; await saveAccounts(accs); }
+              }
+            } catch {}
           }
-          if (!a.description) a.description = null;
-        });
-        console.log(`[DATA] Loaded ${parsed.length} accounts from ${PRODUCTS_FILE}`);
-        return parsed;
+          console.log(`[MIGRATION] Duration extracted for ${needsDuration.length} accounts`);
+        })();
       }
+      return data;
     }
-    console.log(`[DATA] No existing data, writing defaults to ${PRODUCTS_FILE}`);
-    fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(DEFAULT_ACCOUNTS, null, 2), "utf-8");
-    return [...DEFAULT_ACCOUNTS];
+    console.log("[S3] No data found, writing empty array");
+    await ycS3.writeJson(ycS3.PRODUCTS_KEY, []);
+    return [];
   } catch (e) {
-    console.error(`[DATA] Error loading ${PRODUCTS_FILE}:`, e.message);
+    console.error("[S3] Error loading accounts:", e.message);
     return [];
   }
 }
 
-function saveAccounts(accounts) {
-  ensureDataDir();
-  fs.writeFileSync(PRODUCTS_FILE, JSON.stringify(accounts, null, 2), "utf-8");
+async function saveAccounts(accounts) {
+  await ycS3.writeJson(ycS3.PRODUCTS_KEY, accounts);
+}
+
+function invalidateCache() { cachedAccounts = null; }
+
+// ─── Admin auth middleware ───────────────────────────────────────────────────
+
+const ADMIN_USERNAME = process.env.ADMIN_USERNAME || "verykindandfriendlyguy";
+const BOT_TOKEN = process.env.TG_BOT_TOKEN || "";
+
+function verifyTelegramInitData(initData) {
+  if (!BOT_TOKEN) return true; // No token configured — skip validation (dev mode)
+  if (!initData) return false;
+
+  try {
+    const params = new URLSearchParams(initData);
+    const hash = params.get("hash");
+    if (!hash) return false;
+    params.delete("hash");
+
+    // Sort params and build data-check-string
+    const dataCheckArr = [];
+    params.forEach((val, key) => { dataCheckArr.push(`${key}=${val}`); });
+    dataCheckArr.sort();
+    const dataCheckString = dataCheckArr.join("\n");
+
+    // HMAC-SHA256 with bot token as secret key
+    const crypto = require("crypto");
+    const secretKey = crypto.createHmac("sha256", "WebAppData").update(BOT_TOKEN).digest();
+    const hmac = crypto.createHmac("sha256", secretKey).update(dataCheckString).digest("hex");
+
+    return hmac === hash;
+  } catch {
+    return false;
+  }
+}
+
+function requireAdmin(req, res, next) {
+  const initData = req.headers["x-telegram-init-data"];
+  if (!initData) return res.status(403).json({ error: "No Telegram data" });
+
+  // Verify HMAC signature
+  if (!verifyTelegramInitData(initData)) {
+    return res.status(403).json({ error: "Invalid signature" });
+  }
+
+  try {
+    const params = new URLSearchParams(initData);
+    const user = JSON.parse(params.get("user") || "{}");
+    if (user.username !== ADMIN_USERNAME) {
+      return res.status(403).json({ error: "Not admin" });
+    }
+    next();
+  } catch {
+    return res.status(403).json({ error: "Invalid Telegram data" });
+  }
 }
 
 // ─── Static files — uploaded videos ──────────────────────────────────────────
@@ -91,26 +289,6 @@ function ensureUploadsDir() {
 ensureUploadsDir();
 
 app.use("/uploads", express.static(path.join(__dirname, "public", "uploads")));
-
-// ─── Multer config ───────────────────────────────────────────────────────────
-
-const upload = multer({
-  storage: multer.diskStorage({
-    destination: (_req, _file, cb) => {
-      ensureUploadsDir();
-      cb(null, UPLOADS_DIR);
-    },
-    filename: (_req, file, cb) => {
-      const unique = Date.now() + "-" + Math.round(Math.random() * 1e9);
-      cb(null, unique + ".mp4");
-    },
-  }),
-  fileFilter: (_req, file, cb) => {
-    if (file.mimetype === "video/mp4") cb(null, true);
-    else cb(new Error("Only .mp4 files allowed"), false);
-  },
-  limits: { fileSize: 500 * 1024 * 1024 },
-});
 
 // ─── Helpers ─────────────────────────────────────────────────────────────────
 
@@ -127,9 +305,12 @@ function toRub(amount, fromCurrency) {
 
 app.use(
   cors({
-    origin: "*",
+    origin: [
+      "https://artemwork9786-hash.github.io",
+      "https://web.telegram.org",
+    ],
     methods: ["GET", "POST", "PUT", "DELETE", "OPTIONS"],
-    allowedHeaders: ["Content-Type", "Authorization"],
+    allowedHeaders: ["Content-Type", "Authorization", "X-Telegram-Init-Data"],
   })
 );
 app.use((req, res, next) => {
@@ -187,9 +368,44 @@ app.post("/api/upload-video", (req, res) => { console.log("[UPLOAD-DBG] reached 
 
 app.use(express.json());
 
+// ─── Video proxy (fixes CORS for poster extraction on mobile) ─────────────────
+// Yandex Cloud Serverless Containers has a ~3.5MB response limit.
+// We only fetch the first 3MB from S3 — enough for the moov atom / first frame.
+
+const PROXY_MAX_BYTES = 3 * 1024 * 1024;
+const PROXY_ALLOWED_HOSTS = ["storage.yandexcloud.net"];
+
+app.get("/api/proxy-video", (req, res) => {
+  const url = req.query.url;
+  if (!url || !url.startsWith("https://")) {
+    return res.status(400).json({ error: "https url required" });
+  }
+  let parsed;
+  try { parsed = new URL(url); } catch { return res.status(400).json({ error: "invalid url" }); }
+  if (!PROXY_ALLOWED_HOSTS.includes(parsed.hostname)) {
+    return res.status(403).json({ error: "host not allowed" });
+  }
+
+  const opts = { headers: { Range: `bytes=0-${PROXY_MAX_BYTES - 1}` } };
+
+  const proxyReq = https.get(url, opts, (proxyRes) => {
+    const statusCode = proxyRes.statusCode === 206 ? 206 : 200;
+    res.writeHead(statusCode, {
+      "Content-Type": proxyRes.headers["content-type"] || "video/mp4",
+      "Accept-Ranges": "bytes",
+      "Access-Control-Allow-Origin": "*",
+      ...(proxyRes.headers["content-range"] && { "Content-Range": proxyRes.headers["content-range"] }),
+    });
+    proxyRes.pipe(res);
+  });
+
+  proxyReq.on("error", () => res.status(502).end());
+  req.on("close", () => proxyReq.destroy());
+});
+
 // ─── Presigned S3 upload URL (client uploads directly to S3) ─────────────────
 
-app.post("/api/presign-upload", async (req, res) => {
+app.post("/api/presign-upload", requireAdmin, async (req, res) => {
   if (!ycS3.isConfigured()) {
     return res.status(503).json({ error: "S3 not configured" });
   }
@@ -205,70 +421,171 @@ app.post("/api/presign-upload", async (req, res) => {
   }
 });
 
-app.get("/api/accounts", (_req, res) => {
+app.get("/api/accounts", async (_req, res) => {
   res.set("Cache-Control", "no-store, no-cache, must-revalidate, proxy-revalidate");
   res.set("Pragma", "no-cache");
   res.set("Expires", "0");
   res.set("Surrogate-Control", "no-store");
-  const accounts = loadAccounts();
+  const accounts = await loadAccounts();
   res.json({ accounts });
 });
 
-app.post("/api/accounts", (req, res) => {
-  const { title, price, status, video_url, image_url, category, rentTerms, tags, description } = req.body;
+app.get("/api/config", (req, res) => {
+  res.json({ adminUsername: ADMIN_USERNAME });
+});
+
+
+app.get("/api/my-accounts", async (req, res) => {
+  const tgUser = extractTelegramUser(req);
+  if (!tgUser?.id) return res.json({ accounts: [] });
+
+  const accounts = await loadAccounts();
+  const myAccounts = accounts.filter(a =>
+    a.telegram_user_id === tgUser.id &&
+    a.status !== "available"
+  );
+
+  const result = myAccounts.map(a => ({
+    id: a.id,
+    title: a.title,
+    category: a.category,
+    status: a.status,
+    order_id: a.order_id || null,
+    rent_started_at: a.rent_started_at || null,
+    rent_expires_at: a.rent_expires_at || null,
+    thumbnail_url: a.thumbnail_url || null,
+    duration: a.duration || null,
+    rentTerms: a.rentTerms || [],
+    price: a.price || 0,
+  }));
+
+  res.json({ accounts: result });
+});
+
+app.post("/api/accounts", requireAdmin, async (req, res) => {
+  const { title, price, currency, status, video_url, image_url, category, rentTerms, tags, description } = req.body;
   if (!title) return res.status(400).json({ error: "title is required" });
 
-  const accounts = loadAccounts();
+  const accounts = await loadAccounts();
   const newAccount = {
     id: `marx-vip-${Date.now()}`,
     title,
     category: category || "sale",
     price: Number(price) || 0,
-    status: status || "В наличии",
+    currency: currency || "RUB",
+    status: status || "available",
     video_url: video_url || "",
     image_url: image_url || "/placeholder.svg",
+    thumbnail_url: null,
+    order_id: null,
+    rent_started_at: null,
+    rent_expires_at: null,
     rentTerms: rentTerms || [],
     tags: tags || [],
     description: description || null,
   };
   accounts.push(newAccount);
-  saveAccounts(accounts);
+  await saveAccounts(accounts);
   console.log(`[ADMIN] Account added: ${newAccount.title}`);
+
+  // Generate thumbnail and duration in background
+  if (video_url) {
+    Promise.all([
+      generateThumbnail(video_url),
+      extractDuration(video_url),
+    ]).then(async ([thumbUrl, duration]) => {
+      const accs = await loadAccounts();
+      const a = accs.find(x => x.id === newAccount.id);
+      if (a) {
+        if (thumbUrl) a.thumbnail_url = thumbUrl;
+        if (duration) a.duration = duration;
+        await saveAccounts(accs);
+      }
+    }).catch(() => {});
+  }
   res.status(201).json({ success: true, account: newAccount });
 });
 
-app.put("/api/accounts/:id", (req, res) => {
+app.put("/api/accounts/:id", requireAdmin, async (req, res) => {
   const { id } = req.params;
-  const accounts = loadAccounts();
+  const accounts = await loadAccounts();
   const idx = accounts.findIndex((a) => a.id === id);
   if (idx === -1) return res.status(404).json({ error: "Account not found" });
 
-  const { title, price, status, video_url, image_url, category, rentTerms, tags, description } = req.body;
+  const { title, price, currency, status, video_url, image_url, category, rentTerms, tags, description } = req.body;
+  const videoChanged = video_url !== undefined && video_url !== accounts[idx].video_url;
+  const statusChanged = status !== undefined && status !== accounts[idx].status;
+
+  // Delete old video + thumbnail from S3 if replaced
+  if (videoChanged && accounts[idx].video_url) {
+    const oldKey = extractS3Key(accounts[idx].video_url);
+    if (oldKey) await ycS3.deleteVideo(oldKey);
+    const oldThumbKey = extractS3Key(accounts[idx].thumbnail_url);
+    if (oldThumbKey) await ycS3.deleteVideo(oldThumbKey);
+  }
+
+  // Clear order data when admin manually resets status to available
+  const clearOrderData = statusChanged && (status === "available");
+
   accounts[idx] = {
     ...accounts[idx],
     title: title !== undefined ? title : accounts[idx].title,
     category: category !== undefined ? category : accounts[idx].category,
     price: price !== undefined ? Number(price) : accounts[idx].price,
+    currency: currency !== undefined ? currency : (accounts[idx].currency || "RUB"),
     status: status !== undefined ? status : accounts[idx].status,
     video_url: video_url !== undefined ? video_url : accounts[idx].video_url,
     image_url: image_url !== undefined ? image_url : accounts[idx].image_url,
+    order_id: clearOrderData ? null : accounts[idx].order_id,
+    rent_started_at: clearOrderData ? null : accounts[idx].rent_started_at,
+    rent_expires_at: clearOrderData ? null : accounts[idx].rent_expires_at,
+    payment_deadline: clearOrderData ? null : accounts[idx].payment_deadline,
+    paid_at: clearOrderData ? null : accounts[idx].paid_at,
+    telegram_user_id: clearOrderData ? null : accounts[idx].telegram_user_id,
+    telegram_username: clearOrderData ? null : accounts[idx].telegram_username,
+    thumbnail_url: videoChanged ? null : accounts[idx].thumbnail_url,
     rentTerms: rentTerms !== undefined ? rentTerms : accounts[idx].rentTerms,
     tags: tags !== undefined ? tags : accounts[idx].tags,
     description: description !== undefined ? description : accounts[idx].description,
   };
-  saveAccounts(accounts);
+  await saveAccounts(accounts);
   console.log(`[ADMIN] Account updated: ${id}`);
   res.json({ success: true, account: accounts[idx] });
+
+  // Generate thumbnail and duration in background if video changed
+  if (videoChanged && accounts[idx].video_url) {
+    const accountId = id;
+    Promise.all([
+      generateThumbnail(accounts[idx].video_url),
+      extractDuration(accounts[idx].video_url),
+    ]).then(async ([thumbUrl, duration]) => {
+      const accs = await loadAccounts();
+      const a = accs.find(x => x.id === accountId);
+      if (a) {
+        if (thumbUrl) a.thumbnail_url = thumbUrl;
+        if (duration) a.duration = duration;
+        await saveAccounts(accs);
+      }
+    }).catch(() => {});
+  }
 });
 
-app.delete("/api/accounts/:id", (req, res) => {
+app.delete("/api/accounts/:id", requireAdmin, async (req, res) => {
   const { id } = req.params;
-  const accounts = loadAccounts();
+  const accounts = await loadAccounts();
   const idx = accounts.findIndex((a) => a.id === id);
   if (idx === -1) return res.status(404).json({ error: "Account not found" });
 
+  // Delete video AND thumbnail from S3
+  const videoUrl = accounts[idx].video_url;
+  const thumbUrl = accounts[idx].thumbnail_url;
+  const videoKey = extractS3Key(videoUrl);
+  const thumbKey = extractS3Key(thumbUrl);
+  if (videoKey) await ycS3.deleteVideo(videoKey);
+  if (thumbKey) await ycS3.deleteVideo(thumbKey);
+
   accounts.splice(idx, 1);
-  saveAccounts(accounts);
+  await saveAccounts(accounts);
   console.log(`[ADMIN] Account deleted: ${id}`);
   res.json({ success: true, id });
 });
@@ -277,7 +594,7 @@ app.delete("/api/accounts/:id", (req, res) => {
 
 app.post("/api/create-order", async (req, res) => {
   try {
-    const { accountId, currency, method, tgInitData, rentTerm, rentPrice } = req.body;
+    const { accountId, currency, method, tgInitData, rentTerm, rentPrice, rentDurationMs } = req.body;
 
     if (!accountId) return res.status(400).json({ error: "accountId is required" });
     if (!method || !["crypto", "sbp"].includes(method)) {
@@ -287,13 +604,15 @@ app.post("/api/create-order", async (req, res) => {
       return res.status(400).json({ error: "currency must be RUB, UAH, or USD" });
     }
 
-    const accounts = loadAccounts();
+    const accounts = await loadAccounts();
     const account = accounts.find((a) => a.id === accountId);
     if (!account) return res.status(404).json({ error: "Account not found" });
-    if (account.status !== "В наличии") return res.status(409).json({ error: "Account is not available" });
+    if (account.status !== "available") return res.status(409).json({ error: "Account is not available" });
 
     storage.reserveAccount(accountId, accounts);
-    saveAccounts(accounts);
+    if (rentDurationMs) account.rent_duration = rentDurationMs;
+    await saveAccounts(accounts);
+    broadcastAccountUpdate(accountId, account.busyUntil);
 
     const price = (rentTerm && rentPrice) ? Number(rentPrice) : account.price;
     const order = storage.createOrder({ accountId, currency, method, rentTerm: rentTerm || null });
@@ -353,7 +672,7 @@ app.post("/api/create-order", async (req, res) => {
   }
 });
 
-app.get("/api/check-order", (req, res) => {
+app.get("/api/check-order", async (req, res) => {
   const { orderId } = req.query;
   if (!orderId) return res.status(400).json({ error: "orderId is required" });
 
@@ -362,9 +681,9 @@ app.get("/api/check-order", (req, res) => {
 
   if (order.status === "PENDING" && Date.now() > order.expiresAt) {
     storage.updateOrder(orderId, { status: "EXPIRED" });
-    const accounts = loadAccounts();
+    const accounts = await loadAccounts();
     storage.releaseAccount(order.accountId, accounts);
-    saveAccounts(accounts);
+    await saveAccounts(accounts);
     return res.json({ orderId, status: "EXPIRED", paidAt: null });
   }
 
@@ -372,15 +691,6 @@ app.get("/api/check-order", (req, res) => {
     orderId,
     status: order.status,
     paidAt: order.paidAt || null,
-    credentials: order.status === "PAID" ? (() => {
-      const accounts = loadAccounts();
-      const account = accounts.find((a) => a.id === order.accountId);
-      if (!account) return null;
-      return {
-        login: account.title.toLowerCase().replace(/ /g, "").replace(/#/g, "") + "@marx.shop",
-        password: "marx" + account.id.slice(-3) + "2024!",
-      };
-    })() : null,
   });
 });
 
@@ -424,6 +734,225 @@ app.post("/api/verify-invoice", (req, res) => {
   });
 });
 
+// ─── Regenerate thumbnails for accounts missing them ─────────────────────────
+
+app.post("/api/admin/generate-thumbnails", requireAdmin, async (req, res) => {
+  const accounts = await loadAccounts();
+  let generated = 0;
+  for (const a of accounts) {
+    if (a.video_url && !a.thumbnail_url) {
+      const thumbUrl = await generateThumbnail(a.video_url);
+      if (thumbUrl) {
+        a.thumbnail_url = thumbUrl;
+        generated++;
+      }
+    }
+  }
+  if (generated > 0) await saveAccounts(accounts);
+  res.json({ success: true, generated, total: accounts.length });
+});
+
+// ─── Admin: Orders for payment verification ─────────────────────────────────
+
+app.get("/api/admin/orders", requireAdmin, async (req, res) => {
+  const accounts = await loadAccounts();
+  const now = Date.now();
+  let changed = false;
+
+  // Auto-release: waiting_payment > 10 minutes → available
+  for (const a of accounts) {
+    if (a.status === "waiting_payment" && a.payment_deadline && now > a.payment_deadline) {
+      a.status = "available";
+      a.busyUntil = null;
+      a.order_id = null;
+      a.payment_deadline = null;
+      a.telegram_user_id = null;
+      a.telegram_username = null;
+      changed = true;
+      console.log(`[AUTO-RELEASE] ${a.title} — payment deadline expired`);
+    }
+  }
+
+  // Auto-release: payment_confirmed > 1 hour → available (rule #22: 1 hour to confirm)
+  for (const a of accounts) {
+    if (a.status === "payment_confirmed" && a.confirmed_at && now > a.confirmed_at + 60 * 60 * 1000) {
+      a.status = "available";
+      a.busyUntil = null;
+      a.order_id = null;
+      a.payment_deadline = null;
+      a.confirmed_at = null;
+      a.rent_duration = null;
+      a.telegram_user_id = null;
+      a.telegram_username = null;
+      changed = true;
+      console.log(`[AUTO-RELEASE] ${a.title} — confirmation deadline expired (1 hour)`);
+    }
+  }
+
+  // Auto-release: active + rent_expires_at passed → available
+  for (const a of accounts) {
+    if (a.status === "active" && a.rent_expires_at && now > a.rent_expires_at) {
+      a.status = "available";
+      a.busyUntil = null;
+      a.order_id = null;
+      a.rent_started_at = null;
+      a.rent_expires_at = null;
+      a.rent_duration = null;
+      a.telegram_user_id = null;
+      a.telegram_username = null;
+      changed = true;
+      console.log(`[AUTO-RELEASE] ${a.title} — rental time expired`);
+    }
+  }
+
+  if (changed) await saveAccounts(accounts);
+
+  const orders = accounts
+    .filter(a => a.status === "waiting_payment" || a.status === "paid_verifying" || a.status === "payment_confirmed")
+    .map(a => ({
+      id: a.id,
+      title: a.title,
+      category: a.category,
+      price: a.price || 0,
+      currency: a.currency || "RUB",
+      status: a.status,
+      order_id: a.order_id || null,
+      telegram_user_id: a.telegram_user_id || null,
+      telegram_username: a.telegram_username || null,
+      payment_deadline: a.payment_deadline || null,
+      paid_at: a.paid_at || null,
+      confirmed_at: a.confirmed_at || null,
+      created_at: a.payment_deadline ? a.payment_deadline - 10 * 60 * 1000 : null,
+      rentTerms: a.rentTerms || [],
+    }));
+
+  res.json({ orders });
+});
+
+// ─── Payment simulation flow ────────────────────────────────────────────────
+
+const MSK_OFFSET = 3 * 60 * 60 * 1000;
+const PAYMENT_WINDOW = 10 * 60 * 1000; // 10 minutes to complete payment
+
+function extractTelegramUser(req) {
+  const initData = req.headers["x-telegram-init-data"];
+  if (!initData) return null;
+  try {
+    const params = new URLSearchParams(initData);
+    return JSON.parse(params.get("user") || "{}");
+  } catch { return null; }
+}
+
+app.post("/api/orders/pay", async (req, res) => {
+  const { accountId } = req.body;
+  if (!accountId) return res.status(400).json({ error: "accountId is required" });
+
+  const tgUser = extractTelegramUser(req);
+
+  const accounts = await loadAccounts();
+  const account = accounts.find(a => a.id === accountId);
+  if (!account) return res.status(404).json({ error: "Account not found" });
+  if (account.status !== "available") return res.status(409).json({ error: "Account is not available" });
+
+  const orderId = `order-${Date.now()}-${crypto.randomBytes(4).toString("hex")}`;
+  account.status = "waiting_payment";
+  account.order_id = orderId;
+  account.payment_deadline = Date.now() + PAYMENT_WINDOW;
+  if (tgUser?.id) account.telegram_user_id = tgUser.id;
+  if (tgUser?.username) account.telegram_username = tgUser.username;
+  await saveAccounts(accounts);
+
+  console.log(`[ORDER] ${orderId} → waiting_payment for ${accountId} (user: ${tgUser?.username || "unknown"}, id: ${tgUser?.id || "null"})`);
+  console.log(`[ORDER] telegram_user_id saved: ${account.telegram_user_id}`);
+  res.json({ success: true, orderId, status: "waiting_payment" });
+});
+
+app.post("/api/orders/test-pay", async (req, res) => {
+  const { accountId } = req.body;
+  if (!accountId) return res.status(400).json({ error: "accountId is required" });
+
+  const accounts = await loadAccounts();
+  const account = accounts.find(a => a.id === accountId);
+  if (!account) return res.status(404).json({ error: "Account not found" });
+  if (account.status !== "waiting_payment") return res.status(409).json({ error: "Account is not in waiting_payment status" });
+
+  account.status = "paid_verifying";
+  account.paid_at = Date.now();
+  await saveAccounts(accounts);
+
+  console.log(`[ORDER] ${account.order_id} → paid_verifying (test pay)`);
+  res.json({ success: true, orderId: account.order_id, status: "paid_verifying" });
+});
+
+app.post("/api/orders/confirm-payment", requireAdmin, async (req, res) => {
+  const { accountId } = req.body;
+  if (!accountId) return res.status(400).json({ error: "accountId is required" });
+
+  const accounts = await loadAccounts();
+  const account = accounts.find(a => a.id === accountId);
+  if (!account) return res.status(404).json({ error: "Account not found" });
+  if (account.status !== "paid_verifying") return res.status(409).json({ error: "Account is not in paid_verifying status" });
+
+  account.status = "payment_confirmed";
+  account.confirmed_at = Date.now();
+  await saveAccounts(accounts);
+
+  console.log(`[ORDER] ${account.order_id} → payment_confirmed`);
+  res.json({ success: true, orderId: account.order_id, status: "payment_confirmed" });
+});
+
+app.post("/api/orders/approve", requireAdmin, async (req, res) => {
+  const { accountId } = req.body;
+  if (!accountId) return res.status(400).json({ error: "accountId is required" });
+
+  const accounts = await loadAccounts();
+  const account = accounts.find(a => a.id === accountId);
+  if (!account) return res.status(404).json({ error: "Account not found" });
+  if (account.status !== "payment_confirmed") return res.status(409).json({ error: "Account is not in payment_confirmed status" });
+
+  account.status = "active";
+  account.rent_started_at = Date.now();
+  account.rent_expires_at = Date.now() + (account.rent_duration || 24 * 60 * 60 * 1000);
+  await saveAccounts(accounts);
+
+  console.log(`[ORDER] ${account.order_id} → active (approved)`);
+  res.json({ success: true, orderId: account.order_id, status: "active" });
+});
+
+app.post("/api/orders/reject", requireAdmin, async (req, res) => {
+  const { accountId } = req.body;
+  if (!accountId) return res.status(400).json({ error: "accountId is required" });
+
+  const accounts = await loadAccounts();
+  const account = accounts.find(a => a.id === accountId);
+  if (!account) return res.status(404).json({ error: "Account not found" });
+  if (account.status !== "paid_verifying" && account.status !== "waiting_payment" && account.status !== "payment_confirmed") return res.status(409).json({ error: "Account is not pending verification" });
+
+  account.status = "available";
+  account.order_id = null;
+  account.paid_at = null;
+  account.confirmed_at = null;
+  await saveAccounts(accounts);
+
+  console.log(`[ORDER] ${account.order_id} → available (rejected)`);
+  res.json({ success: true, status: "available" });
+});
+
+app.get("/api/orders/status/:accountId", async (req, res) => {
+  const accounts = await loadAccounts();
+  const account = accounts.find(a => a.id === req.params.accountId);
+  if (!account) return res.status(404).json({ error: "Account not found" });
+
+  res.json({
+    accountId: account.id,
+    status: account.status,
+    order_id: account.order_id || null,
+    rent_started_at: account.rent_started_at || null,
+    rent_expires_at: account.rent_expires_at || null,
+    confirmed_at: account.confirmed_at || null,
+  });
+});
+
 app.post("/api/webhook/crypto", (req, res) => {
   try {
     const { update_type, payload } = req.body;
@@ -455,7 +984,7 @@ app.post("/api/webhook/crypto", (req, res) => {
   }
 });
 
-app.post("/api/admin/verify-order", (req, res) => {
+app.post("/api/admin/verify-order", requireAdmin, (req, res) => {
   const { orderId } = req.body;
   if (!orderId) return res.status(400).json({ error: "orderId is required" });
 
@@ -518,16 +1047,17 @@ app.get("/api/rates", async (_req, res) => {
 
 // ─── Cancel order ────────────────────────────────────────────────────────────
 
-app.post("/api/cancel-order", (req, res) => {
+app.post("/api/cancel-order", async (req, res) => {
   const { accountId, orderId } = req.body;
   if (!accountId) return res.status(400).json({ error: "accountId is required" });
 
-  const accounts = loadAccounts();
+  const accounts = await loadAccounts();
   const account = accounts.find((a) => a.id === accountId);
   if (!account) return res.status(404).json({ error: "Account not found" });
 
   storage.releaseAccount(accountId, accounts);
-  saveAccounts(accounts);
+  await saveAccounts(accounts);
+  broadcastAccountUpdate(accountId, null);
 
   const pendingOrders = storage.getOrdersByAccountId(accountId);
   for (const o of pendingOrders) {
@@ -548,6 +1078,7 @@ app.get("/health", (req, res) => {
 
 // ─── Start ───────────────────────────────────────────────────────────────────
 
-app.listen(PORT, "0.0.0.0", () => {
+server.listen(PORT, "0.0.0.0", () => {
   console.log(`\n  MARX SHOP API running on http://0.0.0.0:${PORT}${isServerless ? " (serverless)" : ""}\n`);
+  console.log(`  WebSocket ready on ws://0.0.0.0:${PORT}\n`);
 });

@@ -5,11 +5,16 @@ const path = require("path");
 const DATA_DIR = process.env.DATA_DIR || path.join(__dirname, "..", "data");
 const ORDERS_FILE = path.join(DATA_DIR, "orders.json");
 
+let inMemoryOrders = [];
+
 function ensureDataDir() {
   if (!fs.existsSync(DATA_DIR)) fs.mkdirSync(DATA_DIR, { recursive: true });
 }
 
 function loadOrders() {
+  if (process.env.NODE_ENV === "production") {
+    return inMemoryOrders;
+  }
   ensureDataDir();
   try {
     if (!fs.existsSync(ORDERS_FILE)) return [];
@@ -20,6 +25,12 @@ function loadOrders() {
 }
 
 function saveOrders(orders) {
+  if (process.env.NODE_ENV === "production") {
+    // В серверлессе FS read-only — храним заказы только в памяти.
+    // При рестарте контейнера заказы теряются (ок для тестов).
+    inMemoryOrders = orders;
+    return;
+  }
   ensureDataDir();
   fs.writeFileSync(ORDERS_FILE, JSON.stringify(orders, null, 2), "utf-8");
 }
@@ -81,15 +92,17 @@ function deleteOrder(orderId) {
 // Account reservation helpers
 function reserveAccount(accountId, accounts) {
   const account = accounts.find((a) => a.id === accountId);
-  if (!account || account.status !== "В наличии") return false;
-  account.status = "Занят";
+  if (!account || account.status !== "available") return false;
+  account.status = "waiting_payment";
+  account.busyUntil = new Date(Date.now() + 10 * 60 * 1000).toISOString();
 
   if (reservationTimers.has(accountId)) {
     clearTimeout(reservationTimers.get(accountId));
   }
 
   const timer = setTimeout(() => {
-    account.status = "В наличии";
+    account.status = "available";
+    account.busyUntil = null;
     reservationTimers.delete(accountId);
     const orders = loadOrders();
     for (const order of orders) {
@@ -108,7 +121,8 @@ function reserveAccount(accountId, accounts) {
 function releaseAccount(accountId, accounts) {
   const account = accounts.find((a) => a.id === accountId);
   if (!account) return;
-  account.status = "В наличии";
+  account.status = "available";
+  account.busyUntil = null;
   if (reservationTimers.has(accountId)) {
     clearTimeout(reservationTimers.get(accountId));
     reservationTimers.delete(accountId);
