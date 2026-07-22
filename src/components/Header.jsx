@@ -2,7 +2,7 @@ import { User } from "lucide-react";
 
 export default function Header() {
   return (
-    <header className="sticky top-0 z-[200] border-b border-white/5 bg-neutral-900/70 px-4 pt-4 pb-3 backdrop-blur-md">
+    <header className="fixed top-0 left-0 right-0 z-[200] border-b border-white/5 bg-[#111]/80 backdrop-blur-md px-4 pt-4 pb-3">
       <div className="flex items-center justify-between min-w-0">
         <div className="min-w-0 flex-1">
           <h1 className="text-xl font-bold tracking-widest text-white uppercase truncate">

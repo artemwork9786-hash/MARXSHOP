@@ -523,8 +523,6 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
   const dragState = useRef({ isDragging: false, startX: 0, scrollLeft: 0 });
   const [maskStyle, setMaskStyle] = useState("");
   const [posterSrc, setPosterSrc] = useState(null);
-  const bottomBarRef = useRef(null);
-  const [isCompact, setIsCompact] = useState(false);
 
   const updateFades = () => {
     const el = tagsRef.current;
@@ -583,16 +581,6 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
       }
     });
   }, [videoSrc, hasVideo]);
-
-  useEffect(() => {
-    const el = bottomBarRef.current;
-    if (!el) return;
-    const ro = new ResizeObserver(([entry]) => {
-      setIsCompact(entry.contentRect.width < 280);
-    });
-    ro.observe(el);
-    return () => ro.disconnect();
-  }, []);
 
   return (
     <div className="relative rounded-2xl border border-white/5 bg-[#1A1A1A] shadow-2xl shadow-black/80">
@@ -664,12 +652,12 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
         {hasVideo && (
           <video src={`${videoSrc}#t=0.001`} muted playsInline preload="metadata" className="absolute inset-0 w-full h-full object-cover blur-xl opacity-30 pointer-events-none" />
         )}
-        <div ref={bottomBarRef} className={`relative z-50 flex gap-2 px-3 sm:px-4 py-3 ${isCompact ? "flex-col" : "flex-row items-center justify-between"}`}>
+        <div className="relative z-50 flex flex-col gap-2 px-3 sm:px-4 py-3">
           {isRent ? (
-            <div className={`w-full ${isCompact ? "flex flex-col gap-2" : "flex flex-row items-center justify-between gap-2"}`}>
-              <div className="relative flex-1 min-w-0" ref={dropdownRef}>
-                <button onClick={() => setShowTerms(!showTerms)} className="flex items-center gap-1.5 rounded-lg bg-white/[0.03] backdrop-blur-md border border-white/10 px-3 py-2 transition-all hover:border-white/10 cursor-pointer">
-                  <span className="text-xs sm:text-sm font-bold text-white truncate">{selectedTerm ? <>{getTermLabel(selectedTerm)}<span className="ml-2 text-neutral-400 font-normal whitespace-nowrap">{formattedPrice} {curr.symbol}</span></> : "—"}</span>
+            <div className="w-full flex flex-row items-center justify-between gap-2">
+              <div className="relative min-w-0 flex-1" ref={dropdownRef}>
+                <button onClick={() => setShowTerms(!showTerms)} className="flex items-center gap-1.5 rounded-lg bg-white/[0.03] backdrop-blur-md border border-white/10 px-3 py-2 transition-all hover:border-white/10 cursor-pointer min-w-0 max-w-full">
+                  <span className="text-xs sm:text-sm font-bold text-white truncate min-w-0">{selectedTerm ? <>{selectedTerm.type === "special" && selectedTerm.timeFrom && selectedTerm.timeTo ? `${selectedTerm.timeFrom}–${selectedTerm.timeTo}` : getTermLabel(selectedTerm)}<span className="ml-1.5 text-neutral-400 font-normal whitespace-nowrap">{formattedPrice} {curr.symbol}</span></> : "—"}</span>
                   <ChevronDown size={14} className={`text-white/50 transition-transform duration-200 ${showTerms ? "rotate-180" : ""}`} />
                 </button>
                 <div
@@ -701,12 +689,12 @@ export default function AccountCard({ account, currency, rates, category, onBuy,
                     ))}
                   </div>
               </div>
-              <button onClick={isAvailable && selectedTerm ? () => onRent(account, selectedTerm) : undefined} className={`rounded-xl px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-all active:scale-95 cursor-pointer ${isCompact ? "w-full" : "whitespace-nowrap"} ${isAvailable ? "bg-white text-black hover:bg-neutral-200" : "bg-neutral-800 text-neutral-600 cursor-not-allowed"}`} disabled={!isAvailable || !selectedTerm}>Арендовать</button>
+              <button onClick={isAvailable && selectedTerm ? () => onRent(account, selectedTerm) : undefined} className={`rounded-xl px-[clamp(12px,4vw,20px)] py-2.5 text-sm font-bold uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 cursor-pointer shrink-0 ${isAvailable ? "bg-white text-black hover:bg-neutral-200" : "bg-neutral-800 text-neutral-600 cursor-not-allowed"}`} disabled={!isAvailable || !selectedTerm}>Арендовать</button>
             </div>
           ) : (
-            <div className={`w-full ${isCompact ? "flex flex-col gap-2" : "flex items-center justify-between"}`}>
+            <div className="w-full flex items-center justify-between gap-3">
               <span className="text-xl font-bold text-white">{formattedPrice}<span className="ml-1 text-sm text-neutral-500">{curr.symbol}</span></span>
-              <button onClick={isAvailable ? onBuy : undefined} className={`rounded-xl px-5 py-2.5 text-sm font-bold uppercase tracking-wider transition-all active:scale-95 cursor-pointer ${isCompact ? "w-full" : "whitespace-nowrap"} ${isAvailable ? "bg-white text-black hover:bg-neutral-200" : "bg-neutral-800 text-neutral-600 active:scale-100 cursor-not-allowed"}`} disabled={!isAvailable}>Купить</button>
+              <button onClick={isAvailable ? onBuy : undefined} className={`rounded-xl px-[clamp(12px,4vw,20px)] py-2.5 text-sm font-bold uppercase tracking-wider whitespace-nowrap transition-all active:scale-95 cursor-pointer shrink-0 ${isAvailable ? "bg-white text-black hover:bg-neutral-200" : "bg-neutral-800 text-neutral-600 active:scale-100 cursor-not-allowed"}`} disabled={!isAvailable}>Купить</button>
             </div>
           )}
         </div>

@@ -9,7 +9,7 @@ const NAV_ITEMS = [
 
 export default function BottomNav({ active, setActive }) {
   return (
-    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/5 bg-neutral-900/70 backdrop-blur-md" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
+    <nav className="fixed bottom-0 left-0 right-0 z-50 border-t border-white/5 bg-[#111]/80 backdrop-blur-md" style={{ paddingBottom: "env(safe-area-inset-bottom, 0px)" }}>
       <div className="mx-auto flex max-w-lg items-center justify-around pt-2 pb-1">
         {NAV_ITEMS.map((item) => {
           const Icon = item.icon;

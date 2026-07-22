@@ -327,7 +327,7 @@ function App() {
   return (
     <div className="flex min-h-dvh flex-col bg-[#0A0A0A] overflow-x-hidden">
       <Header />
-      <main className="flex-1 overflow-y-auto pb-24">
+      <main className="flex-1 overflow-y-auto pb-24 pt-[72px]">
         {selectedAccount ? (
           <PaymentFlow
             account={selectedAccount}
